@@ -1,0 +1,4 @@
+# Access lee estos ficheros en ANSI (Windows-1252) con CRLF: git no debe convertirlos
+*.bas -text
+*.vbs -text
+*.accdb binary
