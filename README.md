@@ -5,7 +5,9 @@ tarjetas SIM: qué SIM tiene cada tablet, qué tablet tiene cada examinador, y e
 
 ## Puesta en marcha (una sola vez)
 
-1. Copia la carpeta `BaseDatosTablets` completa a un equipo Windows con Microsoft Access.
+1. Descarga el proyecto (en GitHub: **Code → Download ZIP**), descomprímelo y copia la carpeta
+   completa a un equipo Windows con Microsoft Access. Si Windows bloquea los scripts, antes de
+   descomprimir haz clic derecho sobre el ZIP → **Propiedades** → **Desbloquear**.
 2. Haz doble clic en **`ConstruirFormularios.vbs`** con la base de datos cerrada. Se abre Access,
    crea las consultas, los formularios y el menú dentro de `GestionTablets.accdb` y se cierra. Tarda
    unos segundos.
@@ -118,7 +120,7 @@ Formatos de fecha que entiende: 15/03/2023, 15-03-2023, 15.03.2023 y los número
 
 En los buscadores escribes el texto (vale una parte) y pulsas **Intro**. **Ver todos** quita el filtro.
 
-## Contenido de la carpeta
+## Contenido del proyecto
 
 ```
 GestionTablets.accdb           Base de datos (tablas, relaciones y valores iniciales de estados)
