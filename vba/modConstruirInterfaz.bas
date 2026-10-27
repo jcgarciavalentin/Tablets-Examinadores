@@ -67,10 +67,9 @@ Public Function ConstruirInterfaz()
     CrearFormAsignarTablet
     CrearFormAsignarSIM
     CrearFormHistorico "frmHistoricoTablets", "Histórico examinadores - tablets", "frmSubHistoricoTablets", _
-        "NumeroExaminador;Nombre;Apellidos;Nombre & ' ' & Apellidos;NumeroSerie;IMEI1", _
-        "Nombre, apellidos o nº de examinador; nº de serie o IMEI 1 de la tablet"
+        "HistoricoTablets", "Nombre, apellidos, nº examinador o DNI; nº de serie o IMEI 1 de la tablet"
     CrearFormHistorico "frmHistoricoSIM", "Histórico tablets - tarjetas SIM", "frmSubHistoricoSIM", _
-        "SIM;NumeroSerie;IMEI1", "IMEI o teléfono de la SIM; nº de serie o IMEI 1 de la tablet"
+        "HistoricoSIM", "IMEI o teléfono de la SIM; nº de serie o IMEI 1 de la tablet"
     CrearMenu
     EstablecerFormularioInicio
     Application.RefreshDatabaseWindow
@@ -126,8 +125,8 @@ Private Sub CrearFormExaminadores()
     Set f = NuevoFormulario("SELECT * FROM Examinadores ORDER BY Apellidos, Nombre;", "Examinadores")
     PrepararFicha f
     PonerTitulo f, "Examinadores", True
-    Buscador f, "FiltrarFormulario", "NumeroExaminador;Nombre;Apellidos;Nombre & ' ' & Apellidos", _
-        "Nº de examinador, nombre o apellidos"
+    Buscador f, "FiltrarFormulario", "Examinadores", _
+        "Nº examinador, nombre, apellidos, DNI, o IMEI 1 / nº serie de la tablet que tiene"
 
     y = 2.4
     Campo f, acTextBox, "NumeroExaminador", "NumeroExaminador", "Nº de examinador", 0.5, y, 3: y = y + 0.8
@@ -147,7 +146,7 @@ Private Sub CrearFormTablets()
     Set f = NuevoFormulario("SELECT * FROM Tablets ORDER BY NumeroSerie;", "Tablets")
     PrepararFicha f
     PonerTitulo f, "Tablets", True
-    Buscador f, "FiltrarFormulario", "NumeroSerie;IMEI1;IMEI2;Marca;Modelo", "Nº de serie, IMEI, marca o modelo"
+    Buscador f, "FiltrarFormulario", "Tablets", "Nº de serie, IMEI, marca o modelo"
 
     ' Dos columnas de campos
     y = 2.4
@@ -175,7 +174,7 @@ Private Sub CrearFormTarjetasSIM()
     Set f = NuevoFormulario("SELECT * FROM TarjetasSIM ORDER BY IMEI;", "Tarjetas SIM")
     PrepararFicha f
     PonerTitulo f, "Tarjetas SIM", True
-    Buscador f, "FiltrarFormulario", "IMEI;NumeroTelefono", "IMEI o teléfono"
+    Buscador f, "FiltrarFormulario", "TarjetasSIM", "IMEI o teléfono"
 
     y = 2.4
     Campo f, acTextBox, "IMEI", "IMEI", "IMEI", 0.5, y, 5
@@ -252,12 +251,12 @@ Private Sub CrearFormAsignarSIM()
 End Sub
 
 Private Sub CrearFormHistorico(ByVal nombre As String, ByVal titulo As String, ByVal hojaDatos As String, _
-                               ByVal campos As String, ByVal ayuda As String)
+                               ByVal busqueda As String, ByVal ayuda As String)
     Dim f As Form
     Set f = NuevoFormulario("", titulo)
     PrepararDialogo f
     PonerTitulo f, titulo, True
-    Buscador f, "FiltrarSubformulario", campos, ayuda
+    Buscador f, "FiltrarSubformulario", busqueda, ayuda
     Subformulario f, "subResultados", hojaDatos, "Resultados (pulsa ""Ver todos"" para quitar el filtro)", 0.5, 2.3, 30, 14
     GuardarFormulario f, nombre
 End Sub
@@ -430,13 +429,13 @@ Private Function Combo(ByVal f As Form, ByVal nombre As String, ByVal origen As 
 End Function
 
 ' Cuadro de texto txtBuscar arriba a la derecha; funcion es FiltrarFormulario o FiltrarSubformulario
-' (modGestionTablets) y campos, los campos donde buscar separados por ";".
-Private Sub Buscador(ByVal f As Form, ByVal funcion As String, ByVal campos As String, ByVal ayuda As String)
+' y busqueda, el nombre de la búsqueda en CamposBusqueda (modGestionTablets), donde están los campos.
+Private Sub Buscador(ByVal f As Form, ByVal funcion As String, ByVal busqueda As String, ByVal ayuda As String)
     Dim c As Control, l As Control
     Set c = Campo(f, acTextBox, "txtBuscar", "", "Buscar", 8.2, 0.4, 4.2)
-    c.AfterUpdate = "=" & funcion & "(""" & campos & """)"     ' se busca al pulsar Intro
+    c.AfterUpdate = "=" & funcion & "(""" & busqueda & """)"     ' se busca al pulsar Intro
     Boton f, "cmdVerTodos", "Ver todos", "=QuitarFiltro()", 16.4, 0.3, 2
-    Set l = CreateControl(f.Name, acLabel, acDetail, , , 12 * CM, 1.05 * CM, 6.3 * CM, 1 * CM)
+    Set l = CreateControl(f.Name, acLabel, acDetail, , , 12 * CM, 1.05 * CM, 6.3 * CM, 1.25 * CM)
     l.Caption = ayuda & " (escribe y pulsa Intro)"
     l.FontSize = 8
     l.FontItalic = True

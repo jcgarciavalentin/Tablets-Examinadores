@@ -95,7 +95,8 @@ Formatos de fecha que entiende: 15/03/2023, 15-03-2023, 15.03.2023 y los número
 
 **Datos**
 - **Examinadores**: ficha con el histórico de tablets que ha tenido. Se busca por nº de
-  examinador, nombre o apellidos (también "nombre apellidos").
+  examinador, nombre, apellidos (también "nombre apellidos"), DNI, o por el IMEI 1 o nº de serie de
+  la tablet que tiene asignada en ese momento.
 - **Tablets**: ficha con el histórico de examinadores y el de tarjetas SIM. Se busca por nº de
   serie, IMEI 1, IMEI 2, marca o modelo.
 - **Tarjetas SIM**: ficha con el histórico de tablets en que ha estado. Se busca por IMEI o teléfono.
@@ -114,7 +115,7 @@ Formatos de fecha que entiende: 15/03/2023, 15-03-2023, 15.03.2023 y los número
 **Consultas**
 - **Situación actual**: cada tablet con su estado, examinador y SIM actuales.
 - **Histórico examinador - tablet**: todas las asignaciones, vigentes y pasadas. Se busca por
-  nombre, apellidos o nº de examinador, o por nº de serie o IMEI 1 de la tablet.
+  nombre, apellidos, nº de examinador o DNI, o por nº de serie o IMEI 1 de la tablet.
 - **Histórico tablet - SIM**: se busca por IMEI o teléfono de la SIM, o por nº de serie o IMEI 1 de
   la tablet.
 

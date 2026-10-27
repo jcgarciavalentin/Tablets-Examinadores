@@ -20,15 +20,36 @@ Public Function AbrirHojaDatos(ByVal nombre As String)
     DoCmd.OpenForm nombre, acFormDS
 End Function
 
-' Cuadro "Buscar": deja visibles los registros en los que alguno de los campos (separados por ";";
-' pueden ser expresiones) contiene el texto escrito en txtBuscar. Sin texto, se quita el filtro.
-Public Function FiltrarFormulario(ByVal campos As String)
-    AplicarFiltro Screen.ActiveForm, Screen.ActiveForm, campos
+' Cuadro "Buscar": deja visibles los registros que cumplen alguna de las condiciones de búsqueda
+' (CamposBusqueda) con el texto escrito en txtBuscar. Sin texto, se quita el filtro.
+' clave es el nombre de la búsqueda, que pone cada formulario.
+Public Function FiltrarFormulario(ByVal clave As String)
+    AplicarFiltro Screen.ActiveForm, Screen.ActiveForm, CamposBusqueda(clave)
 End Function
 
 ' Igual, pero filtra la hoja de datos del subformulario subResultados (formularios de histórico).
-Public Function FiltrarSubformulario(ByVal campos As String)
-    AplicarFiltro Screen.ActiveForm, Screen.ActiveForm!subResultados.Form, campos
+Public Function FiltrarSubformulario(ByVal clave As String)
+    AplicarFiltro Screen.ActiveForm, Screen.ActiveForm!subResultados.Form, CamposBusqueda(clave)
+End Function
+
+' Dónde busca cada cuadro "Buscar", separado por ";". Un campo o expresión se compara con
+' Like '*texto*'; una condición que contiene {patron} se usa entera, con {patron} = '*texto*'.
+Private Function CamposBusqueda(ByVal clave As String) As String
+    Select Case clave
+        Case "Examinadores"
+            ' También por la tablet que tiene asignada ahora (IMEI 1 o nº de serie)
+            CamposBusqueda = "NumeroExaminador;Nombre;Apellidos;Nombre & ' ' & Apellidos;DNI;" & _
+                "IdExaminador IN (SELECT A.IdExaminador FROM AsignacionesTablet AS A INNER JOIN Tablets AS T " & _
+                "ON A.IdTablet = T.IdTablet WHERE A.FechaFin Is Null AND (T.IMEI1 Like {patron} OR T.NumeroSerie Like {patron}))"
+        Case "Tablets"
+            CamposBusqueda = "NumeroSerie;IMEI1;IMEI2;Marca;Modelo"
+        Case "TarjetasSIM"
+            CamposBusqueda = "IMEI;NumeroTelefono"
+        Case "HistoricoTablets"
+            CamposBusqueda = "NumeroExaminador;Nombre;Apellidos;Nombre & ' ' & Apellidos;DNI;NumeroSerie;IMEI1"
+        Case "HistoricoSIM"
+            CamposBusqueda = "SIM;NumeroSerie;IMEI1"
+    End Select
 End Function
 
 Public Function QuitarFiltro()
@@ -176,7 +197,7 @@ Public Function RetirarSIM()
 End Function
 
 Private Sub AplicarFiltro(ByVal f As Object, ByVal destino As Object, ByVal campos As String)
-    Dim texto As String, campo As Variant, filtro As String
+    Dim texto As String, campo As Variant, filtro As String, patron As String
     texto = Trim$(Nz(f!txtBuscar, ""))
     If Len(texto) = 0 Then
         destino.FilterOn = False
@@ -188,8 +209,13 @@ Private Sub AplicarFiltro(ByVal f As Object, ByVal destino As Object, ByVal camp
     texto = Replace(texto, "*", "[*]")
     texto = Replace(texto, "?", "[?]")
     texto = Replace(texto, "#", "[#]")
+    patron = "'*" & texto & "*'"
     For Each campo In Split(campos, ";")
-        filtro = filtro & " OR (" & campo & ") Like '*" & texto & "*'"
+        If InStr(campo, "{patron}") > 0 Then
+            filtro = filtro & " OR (" & Replace(campo, "{patron}", patron) & ")"
+        Else
+            filtro = filtro & " OR (" & campo & ") Like " & patron
+        End If
     Next
     If destino.Dirty Then destino.Dirty = False
     destino.Filter = Mid$(filtro, 5)
