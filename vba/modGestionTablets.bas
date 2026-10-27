@@ -52,7 +52,8 @@ Private Function CamposBusqueda(ByVal clave As String) As String
         Case "Tablets"
             CamposBusqueda = "NumeroSerie;IMEI1;IMEI2;Marca;Modelo"
         Case "TarjetasSIM"
-            CamposBusqueda = "IMEI;NumeroTelefono"
+            CamposBusqueda = "IMEI;NumeroTelefono;" & _
+                "IdCompania IN (SELECT IdCompania FROM Companias WHERE Compania Like {patron})"
         Case "HistoricoTablets"
             CamposBusqueda = "NumeroExaminador;Nombre;Apellidos;Nombre & ' ' & Apellidos;DNI;NumeroSerie;IMEI1"
         Case "HistoricoSIM"

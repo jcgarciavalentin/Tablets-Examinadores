@@ -18,6 +18,10 @@ tarjetas SIM: qué SIM tiene cada tablet, qué tablet tiene cada examinador, y e
 
 Se abre el menú principal (`frmMenu`).
 
+> `ConstruirFormularios.vbs` también añade a una base de datos ya en uso las tablas y campos que se
+> han ido incorporando (histórico de estados, compañías, foto de la SIM), sin tocar los datos. El
+> campo **Foto** lo crea siempre este script, porque Jackcess no sabe crear campos de datos adjuntos.
+>
 > **¿Por qué hace falta el paso 2?** Las tablas y relaciones se generan con Jackcess, una librería
 > Java que escribe ficheros de Access sin necesitar Access. Pero los formularios de Access solo los
 > puede crear el propio Access, así que el script lo hace con su automatización (`CreateForm`).
@@ -74,14 +78,15 @@ Formatos de fecha que entiende: 15/03/2023, 15-03-2023, 15.03.2023 y los número
 | `EstadosExaminador` | IdEstadoExam, EstadoExaminador: *Activo, Baja temporal, Baja* |
 | `Tablets` | IdTablet, IMEI1, IMEI2, NumeroSerie, Marca, Modelo, FechaRecepcion, FechaDesafectacion, IdEstado, Observaciones, Incidencias |
 | `EstadosTablet` | IdEstado, Estado: *Operativa, Averiada, En reparación, Desafectada* |
-| `TarjetasSIM` | IdSIM, IMEI, NumeroTelefono (teléfono asociado), PIN, PUK, IdEstadoSIM (estado), Observaciones |
+| `TarjetasSIM` | IdSIM, IMEI, NumeroTelefono (teléfono asociado), IdCompania (compañía, por defecto N/A), PIN, PUK, IdEstadoSIM (estado), Observaciones, Foto (datos adjuntos) |
+| `Companias` | IdCompania, Compania: *N/A, Movistar, Orange, Vodafone* |
 | `EstadosSIM` | IdEstadoSIM, EstadoSIM: *Activa, Suspendida, Baja* |
 | `AsignacionesTablet` | IdAsignacion, IdExaminador, IdTablet, FechaInicio, FechaFin, Observaciones |
 | `AsignacionesSIM` | IdAsignacionSIM, IdTablet, IdSIM, FechaInicio, FechaFin, Observaciones |
 | `HistorialEstadosTablet` | IdCambio, IdTablet, Fecha, IdEstadoAnterior, IdEstadoNuevo, IdExaminador (quién la devolvió), Observaciones |
 
 - Los valores iniciales de las tablas de estados son orientativos. Se cambian desde el menú
-  (*Estados de tablet* / *Situaciones de examinador* / *Estados de SIM*).
+  (*Estados de tablet* / *Situaciones de examinador* / *Estados de SIM* / *Compañías*).
 - Son obligatorios: nombre, apellidos y DNI del examinador, nº de serie de la tablet e IMEI de la SIM.
 - Son únicos: DNI, nº de examinador, nº de serie, IMEI1, IMEI2 e IMEI de la SIM. Los campos
   opcionales pueden quedar vacíos en varios registros.
@@ -104,9 +109,11 @@ Formatos de fecha que entiende: 15/03/2023, 15-03-2023, 15.03.2023 y los número
 - **Tablets**: ficha con el histórico de examinadores, el de tarjetas SIM y el de estados (las
   devoluciones y los cambios de estado hechos a mano en la propia ficha). Se busca por nº de
   serie, IMEI 1, IMEI 2, marca o modelo.
-- **Tarjetas SIM**: ficha con el histórico de tablets en que ha estado. Se busca por IMEI o teléfono.
-- **Estados de tablet** / **Situaciones de examinador** / **Estados de SIM**: mantenimiento de las
-  tablas auxiliares.
+- **Tarjetas SIM**: ficha con la compañía, la **foto de la tarjeta** y el histórico de tablets en que
+  ha estado. Se busca por IMEI, teléfono o compañía. Para poner o cambiar la foto, haz doble clic
+  en su recuadro y pulsa *Agregar…* (la imagen se guarda dentro de la base de datos).
+- **Estados de tablet** / **Situaciones de examinador** / **Estados de SIM** / **Compañías**:
+  mantenimiento de las tablas auxiliares (altas, cambios y bajas).
 
 **Asignaciones**
 - **Asignar / devolver tablet**: eliges examinador, tablet y fecha.

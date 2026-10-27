@@ -61,6 +61,17 @@ public class GenerarBaseDatos {
                 estadosSIM.addRow(Column.AUTO_NUMBER, estado);
             }
 
+            // N/A debe ser la primera (Id 1): es la compañía por defecto de las tarjetas SIM.
+            Table companias = new TableBuilder("Companias")
+                    .addColumn(autonumerico("IdCompania"))
+                    .addColumn(texto("Compania", 50, "Compañía", true))
+                    .addIndex(clavePrimaria("IdCompania"))
+                    .addIndex(unico("Compania"))
+                    .toTable(db);
+            for (String compania : new String[] {"N/A", "Movistar", "Orange", "Vodafone"}) {
+                companias.addRow(Column.AUTO_NUMBER, compania);
+            }
+
             new TableBuilder("Examinadores")
                     .addColumn(autonumerico("IdExaminador"))
                     .addColumn(texto("NumeroExaminador", 20, "Nº de examinador", false))
@@ -102,6 +113,8 @@ public class GenerarBaseDatos {
                     .addColumn(autonumerico("IdSIM"))
                     .addColumn(texto("IMEI", 22, "IMEI", true))
                     .addColumn(texto("NumeroTelefono", 20, "Teléfono asociado", false))
+                    .addColumn(entero("IdCompania", "Compañía")
+                            .putProperty(PropertyMap.DEFAULT_VALUE_PROP, "1"))   // N/A
                     .addColumn(texto("PIN", 8, "PIN", false))
                     .addColumn(texto("PUK", 10, "PUK", false))
                     .addColumn(entero("IdEstadoSIM", "Estado")
@@ -111,6 +124,7 @@ public class GenerarBaseDatos {
                     .addIndex(unico("IMEI"))
                     .addIndex(new IndexBuilder("NumeroTelefono").addColumns("NumeroTelefono"))
                     .addIndex(new IndexBuilder("IdEstadoSIM").addColumns("IdEstadoSIM"))
+                    .addIndex(new IndexBuilder("IdCompania").addColumns("IdCompania"))
                     .toTable(db);
 
             // Cada fila es un periodo de asignación; FechaFin vacía = asignación vigente.
@@ -165,6 +179,7 @@ public class GenerarBaseDatos {
             relacion(db, "Tablets", "AsignacionesSIM", "IdTablet");
             relacion(db, "TarjetasSIM", "AsignacionesSIM", "IdSIM");
             relacion(db, "EstadosSIM", "TarjetasSIM", "IdEstadoSIM");
+            relacion(db, "FK_SIM_Compania", "Companias", "TarjetasSIM", "IdCompania", "IdCompania");
             relacion(db, "FK_HET_Tablet", "Tablets", "HistorialEstadosTablet", "IdTablet", "IdTablet");
             relacion(db, "FK_HET_EstadoAnterior", "EstadosTablet", "HistorialEstadosTablet", "IdEstado", "IdEstadoAnterior");
             relacion(db, "FK_HET_EstadoNuevo", "EstadosTablet", "HistorialEstadosTablet", "IdEstado", "IdEstadoNuevo");

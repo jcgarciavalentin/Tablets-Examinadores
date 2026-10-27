@@ -10,9 +10,11 @@ Private Const ANCHO_ETIQUETA As Single = 3.8
 Private Const VISTA_FORMULARIO As Integer = 0
 Private Const VISTA_HOJA_DATOS As Integer = 2
 Private Const DB_TEXT As Integer = 10
+Private Const DB_ATTACHMENT As Integer = 101    ' campo de datos adjuntos (dbAttachment)
+Private Const ADJUNTO As Integer = 126          ' control de datos adjuntos (acAttachment)
 
 Private Const FORMULARIOS As String = "frmMenu,frmExaminadores,frmTablets,frmTarjetasSIM,frmAsignarTablet," & _
-    "frmEstadosTablet,frmEstadosExaminador,frmEstadosSIM,frmElegirEstado,frmSubHistorialEstadosTablet," & _
+    "frmEstadosTablet,frmEstadosExaminador,frmEstadosSIM,frmCompanias,frmElegirEstado,frmSubHistorialEstadosTablet," & _
     "frmAsignarSIM,frmEstadoTablets,frmHistoricoTablets,frmHistoricoSIM,frmSubHistoricoTablets,frmSubHistoricoSIM," & _
     "frmSubHistorialExaminador," & _
     "frmSubHistorialTablet,frmSubHistorialSIMTablet,frmSubHistorialTabletsSIM,frmSubTabletsActuales,frmSubSIMActuales"
@@ -61,6 +63,8 @@ Public Function ConstruirInterfaz()
         "Situaciones de examinador", Array("EstadoExaminador|Situación|6"), True
     CrearHojaDatos "frmEstadosSIM", "SELECT * FROM EstadosSIM ORDER BY EstadoSIM;", "Estados de SIM", _
         Array("EstadoSIM|Estado|6"), True
+    CrearHojaDatos "frmCompanias", "SELECT * FROM Companias ORDER BY Compania;", "Compañías", _
+        Array("Compania|Compañía|6"), True
 
     CrearHojaDatos "frmSubHistorialEstadosTablet", "qryHistorialEstadosTablet", "Histórico de estados", _
         Array("Fecha|Fecha|2.4", "EstadoAnterior|De|2.8", "EstadoNuevo|A|2.8", "Examinador|Devuelta por|5", "Observaciones|Observaciones|5")
@@ -220,7 +224,7 @@ Private Sub CrearFormTarjetasSIM()
     Set f = NuevoFormulario("SELECT * FROM TarjetasSIM ORDER BY IMEI;", "Tarjetas SIM")
     PrepararFicha f
     PonerTitulo f, "Tarjetas SIM", True
-    Buscador f, "FiltrarFormulario", "TarjetasSIM", "IMEI o teléfono"
+    Buscador f, "FiltrarFormulario", "TarjetasSIM", "IMEI, teléfono o compañía"
 
     y = 2.4
     Campo f, acTextBox, "IMEI", "IMEI", "IMEI", 0.5, y, 5
@@ -228,8 +232,12 @@ Private Sub CrearFormTarjetasSIM()
     Campo f, acTextBox, "PIN", "PIN", "PIN", 0.5, y, 2.5
     Campo f, acTextBox, "PUK", "PUK", "PUK", 9.5, y, 2.5: y = y + 0.8
     Combo f, "IdEstadoSIM", "IdEstadoSIM", "Estado", 0.5, y, 4, _
-        "SELECT IdEstadoSIM, EstadoSIM FROM EstadosSIM ORDER BY EstadoSIM;", "0;4": y = y + 0.8
+        "SELECT IdEstadoSIM, EstadoSIM FROM EstadosSIM ORDER BY EstadoSIM;", "0;4"
+    Combo f, "IdCompania", "IdCompania", "Compañía", 9.5, y, 4, _
+        "SELECT IdCompania, Compania FROM Companias ORDER BY Compania;", "0;4": y = y + 0.8
     Memo f, "Observaciones", "Observaciones", 0.5, y, 13.7, 1.6: y = y + 2
+    ' Foto de la tarjeta (campo de datos adjuntos): doble clic sobre el recuadro para añadirla
+    Campo f, ADJUNTO, "Foto", "Foto", "Foto de la tarjeta", 0.5, y, 6, 4: y = y + 4.4
 
     Subformulario f, "subHistorial", "frmSubHistorialTabletsSIM", "Histórico de tablets", 0.5, y, 17.5, 5, "IdSIM"
     GuardarFormulario f, "frmTarjetasSIM"
@@ -303,9 +311,11 @@ Private Sub CrearFormAsignarSIM()
         "WHERE T.FechaDesafectacion Is Null ORDER BY T.NumeroSerie;", ANCHOS_TABLET & ";5.5")
     c.ColumnHeads = True
     Set c = Combo(f, "cboSIM", "", "Tarjeta SIM", 0.5, 2.6, 8, _
-        "SELECT M.IdSIM, M.IMEI, M.NumeroTelefono AS [Teléfono], ES.EstadoSIM AS Estado, S.Tablet AS [En la tablet] " & _
-        "FROM (TarjetasSIM AS M LEFT JOIN EstadosSIM AS ES ON M.IdEstadoSIM = ES.IdEstadoSIM) " & _
-        "LEFT JOIN qrySIMActuales AS S ON M.IdSIM = S.IdSIM ORDER BY M.IMEI;", "0;5;3;2.3;5.5")
+        "SELECT M.IdSIM, M.IMEI, M.NumeroTelefono AS [Teléfono], C.Compania AS [Compañía], ES.EstadoSIM AS Estado, " & _
+        "S.Tablet AS [En la tablet] " & _
+        "FROM ((TarjetasSIM AS M LEFT JOIN EstadosSIM AS ES ON M.IdEstadoSIM = ES.IdEstadoSIM) " & _
+        "LEFT JOIN Companias AS C ON M.IdCompania = C.IdCompania) " & _
+        "LEFT JOIN qrySIMActuales AS S ON M.IdSIM = S.IdSIM ORDER BY M.IMEI;", "0;5;3;2.5;2.3;5.5")
     c.ColumnHeads = True
     CamposFechaYObservaciones f, "Fecha"
 
@@ -351,6 +361,7 @@ Private Sub CrearMenu()
     Boton f, "cmdEstadosTablet", "Estados de tablet", "=AbrirHojaDatos(""frmEstadosTablet"")", 0.5, 5.5, 5.5
     Boton f, "cmdEstadosExam", "Situaciones de examinador", "=AbrirHojaDatos(""frmEstadosExaminador"")", 0.5, 6.5, 5.5
     Boton f, "cmdEstadosSIM", "Estados de SIM", "=AbrirHojaDatos(""frmEstadosSIM"")", 0.5, 7.5, 5.5
+    Boton f, "cmdCompanias", "Compañías", "=AbrirHojaDatos(""frmCompanias"")", 0.5, 8.5, 5.5
 
     Seccion f, "Asignaciones", 6.5
     Boton f, "cmdAsignarTablet", "Asignar / devolver tablet", "=AbrirFormulario(""frmAsignarTablet"")", 6.5, 2.2, 5.5
@@ -361,14 +372,14 @@ Private Sub CrearMenu()
     Boton f, "cmdHistTablets", "Histórico examinador - tablet", "=AbrirFormulario(""frmHistoricoTablets"")", 12.5, 3.2, 5.5
     Boton f, "cmdHistSIM", "Histórico tablet - SIM", "=AbrirFormulario(""frmHistoricoSIM"")", 12.5, 4.2, 5.5
 
-    f.Section(acDetail).Height = 8.8 * CM
+    f.Section(acDetail).Height = 9.8 * CM
     GuardarFormulario f, "frmMenu"
 End Sub
 
 ' Tablas añadidas después de la primera versión de GestionTablets.accdb: se crean si no existen,
 ' para no tener que sustituir una base de datos que ya tenga datos.
 Private Sub CrearTablasQueFalten()
-    Dim db As Object
+    Dim db As Object, td As Object, compania As Variant, idNA As Variant
     Set db = CurrentDb
     If Not Existe(CurrentData.AllTables, "HistorialEstadosTablet") Then
         db.Execute "CREATE TABLE HistorialEstadosTablet (" & _
@@ -380,7 +391,40 @@ Private Sub CrearTablasQueFalten()
             "IdExaminador LONG CONSTRAINT FK_HET_Examinador REFERENCES Examinadores (IdExaminador), " & _
             "Observaciones TEXT(255))", 128
     End If
+
+    ' Compañías de las SIM; N/A es la compañía por defecto
+    If Not Existe(CurrentData.AllTables, "Companias") Then
+        db.Execute "CREATE TABLE Companias (IdCompania COUNTER CONSTRAINT PrimaryKey PRIMARY KEY, " & _
+                   "Compania TEXT(50) NOT NULL CONSTRAINT UQ_Compania UNIQUE)", 128
+        For Each compania In Array("N/A", "Movistar", "Orange", "Vodafone")
+            db.Execute "INSERT INTO Companias (Compania) VALUES ('" & compania & "')", 128
+        Next
+    End If
+    If Not ExisteCampo(db, "TarjetasSIM", "IdCompania") Then
+        idNA = DLookup("IdCompania", "Companias", "Compania = 'N/A'")
+        db.Execute "ALTER TABLE TarjetasSIM ADD COLUMN IdCompania LONG " & _
+                   "CONSTRAINT FK_SIM_Compania REFERENCES Companias (IdCompania)", 128
+        db.Execute "UPDATE TarjetasSIM SET IdCompania = " & idNA, 128
+        db.TableDefs.Refresh
+        With db.TableDefs("TarjetasSIM").Fields("IdCompania")
+            .DefaultValue = CStr(idNA)
+            .Required = True
+        End With
+    End If
+
+    ' Foto de la tarjeta SIM. Jackcess no crea campos de datos adjuntos: lo añade siempre Access.
+    If Not ExisteCampo(db, "TarjetasSIM", "Foto") Then
+        Set td = db.TableDefs("TarjetasSIM")
+        td.Fields.Append td.CreateField("Foto", DB_ATTACHMENT)
+    End If
 End Sub
+
+Private Function ExisteCampo(ByVal db As Object, ByVal tabla As String, ByVal nombreCampo As String) As Boolean
+    Dim c As Object
+    For Each c In db.TableDefs(tabla).Fields
+        If c.Name = nombreCampo Then ExisteCampo = True: Exit Function
+    Next
+End Function
 
 Private Sub EstablecerFormularioInicio()
     Dim db As Object

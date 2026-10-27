@@ -22,6 +22,7 @@ Private numIncidencias As Long
 ' Claves (sin distinguir mayúsculas) -> Id en la base nueva
 Private idEstadoTablet As Object
 Private idSituacion As Object
+Private idCompaniaNA As Variant     ' compañía por defecto de las SIM (la base antigua no la tiene)
 Private idEstadoSim As Object
 Private idExaminadorPorDni As Object
 Private idTabletPorSerie As Object
@@ -39,6 +40,7 @@ Public Function ImportarDatosAntiguos(ByVal rutaAntigua As String) As String
     Set idEstadoTablet = CargarDiccionario("EstadosTablet", "Estado", "IdEstado")
     Set idSituacion = CargarDiccionario("EstadosExaminador", "EstadoExaminador", "IdEstadoExam")
     Set idEstadoSim = CargarDiccionario("EstadosSIM", "EstadoSIM", "IdEstadoSIM")
+    idCompaniaNA = DLookup("IdCompania", "Companias", "Compania = 'N/A'")
     Set idExaminadorPorDni = NuevoDiccionario()
     Set idTabletPorSerie = NuevoDiccionario()
     Set idSimPorNumero = NuevoDiccionario()
@@ -372,6 +374,7 @@ Private Sub ImportarFilaSIM(ByVal r As Object, ByVal sims As Object, ByVal asign
         sims!PIN = Nulo(Recortar(Texto(r!Pin), 8, "TarjetasSIM", registro, "PIN"))
         sims!PUK = Nulo(Recortar(Texto(r!PUK), 10, "TarjetasSIM", registro, "PUK"))
         sims!IdEstadoSIM = IdEstado(idEstadoSim, "EstadosSIM", "EstadoSIM", "IdEstadoSIM", estado, "Activa")
+        sims!IdCompania = idCompaniaNA
         sims.Update
         sims.Bookmark = sims.LastModified
         idSIM = sims!IdSIM
