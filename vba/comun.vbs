@@ -13,6 +13,13 @@ carpeta = fso.GetParentFolderName(WScript.ScriptFullName)
 Sub AplicarCambios(rutaBD)
     Dim acc, hayDatos, conservar, rutaAntigua, copia, resultado, mensaje
 
+    ' Al abrir un script desde dentro de un ZIP, Windows lo saca solo a una carpeta temporal
+    If InStr(LCase(carpeta), ".zip") > 0 Then
+        MsgBox "Estás ejecutando el script desde dentro del fichero ZIP." & vbCrLf & vbCrLf & _
+               "Primero descomprímelo (clic derecho sobre el ZIP > Extraer todo...) y ejecuta el " & _
+               "script desde la carpeta extraída.", vbExclamation, TITULO_APP
+        Exit Sub
+    End If
     If Not fso.FileExists(rutaBD) Then
         MsgBox "No se encuentra " & rutaBD, vbCritical, TITULO_APP
         Exit Sub
