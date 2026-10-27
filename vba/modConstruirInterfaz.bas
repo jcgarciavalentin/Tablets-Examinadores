@@ -120,7 +120,7 @@ Private Sub CrearFormExaminadores()
     Dim f As Form, y As Single
     Set f = NuevoFormulario("SELECT * FROM Examinadores ORDER BY Apellidos, Nombre;", "Examinadores")
     PrepararFicha f
-    Titulo f, "Examinadores", True
+    PonerTitulo f, "Examinadores", True
     Buscador f, "FiltrarFormulario", "NumeroExaminador;Nombre;Apellidos;Nombre & ' ' & Apellidos", _
         "Nº de examinador, nombre o apellidos"
 
@@ -141,7 +141,7 @@ Private Sub CrearFormTablets()
     Dim f As Form, c As Control, y As Single
     Set f = NuevoFormulario("SELECT * FROM Tablets ORDER BY NumeroSerie;", "Tablets")
     PrepararFicha f
-    Titulo f, "Tablets", True
+    PonerTitulo f, "Tablets", True
     Buscador f, "FiltrarFormulario", "NumeroSerie;IMEI1;IMEI2;Marca;Modelo", "Nº de serie, IMEI, marca o modelo"
 
     ' Dos columnas de campos
@@ -169,7 +169,7 @@ Private Sub CrearFormTarjetasSIM()
     Dim f As Form, y As Single
     Set f = NuevoFormulario("SELECT * FROM TarjetasSIM ORDER BY IMEI;", "Tarjetas SIM")
     PrepararFicha f
-    Titulo f, "Tarjetas SIM", True
+    PonerTitulo f, "Tarjetas SIM", True
     Buscador f, "FiltrarFormulario", "IMEI", "IMEI de la tarjeta"
 
     y = 2.4
@@ -189,7 +189,7 @@ Private Sub CrearFormAsignarTablet()
     Dim f As Form, c As Control
     Set f = NuevoFormulario("", "Asignar / devolver tablet")
     PrepararDialogo f
-    Titulo f, "Asignación de tablets a examinadores"
+    PonerTitulo f, "Asignación de tablets a examinadores"
 
     Combo f, "cboExaminador", "", "Examinador", 0.5, 1.8, 8, _
         "SELECT E.IdExaminador, " & DESC_EXAMINADOR & " AS Examinador, EE.EstadoExaminador, Q.Tablet " & _
@@ -216,7 +216,7 @@ Private Sub CrearFormAsignarSIM()
     Dim f As Form
     Set f = NuevoFormulario("", "Asociar / retirar tarjeta SIM")
     PrepararDialogo f
-    Titulo f, "Tarjetas SIM de las tablets"
+    PonerTitulo f, "Tarjetas SIM de las tablets"
 
     Combo f, "cboTablet", "", "Tablet", 0.5, 1.8, 8, _
         "SELECT T.IdTablet, " & DESC_TABLET & " AS Tablet, ET.Estado, S.SIM " & _
@@ -243,7 +243,7 @@ Private Sub CrearFormHistorico(ByVal nombre As String, ByVal titulo As String, B
     Dim f As Form
     Set f = NuevoFormulario("", titulo)
     PrepararDialogo f
-    Titulo f, titulo, True
+    PonerTitulo f, titulo, True
     Buscador f, "FiltrarSubformulario", campos, ayuda
     Subformulario f, "subResultados", hojaDatos, "Resultados (pulsa ""Ver todos"" para quitar el filtro)", 0.5, 2.3, 30, 14
     GuardarFormulario f, nombre
@@ -262,7 +262,7 @@ Private Sub CrearMenu()
     Set f = NuevoFormulario("", "Gestión de tablets")
     PrepararDialogo f
     f.OnActivate = ""
-    Titulo f, "Gestión de tablets"
+    PonerTitulo f, "Gestión de tablets"
 
     Seccion f, "Datos", 0.5
     Boton f, "cmdExaminadores", "Examinadores", "=AbrirFormulario(""frmExaminadores"")", 0.5, 2.2, 5.5
@@ -443,7 +443,7 @@ Private Sub Subformulario(ByVal f As Form, ByVal nombre As String, ByVal origen 
 End Sub
 
 ' Con buscador el título deja libre la parte derecha y puede ocupar dos líneas.
-Private Sub Titulo(ByVal f As Form, ByVal texto As String, Optional ByVal conBuscador As Boolean = False)
+Private Sub PonerTitulo(ByVal f As Form, ByVal texto As String, Optional ByVal conBuscador As Boolean = False)
     Dim l As Control
     Set l = CreateControl(f.Name, acLabel, acDetail, , , 0.5 * CM, 0.3 * CM, _
                           IIf(conBuscador, 7.5, 17.5) * CM, IIf(conBuscador, 1.8, 0.9) * CM)
