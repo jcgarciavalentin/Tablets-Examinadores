@@ -139,6 +139,22 @@ public class GenerarBaseDatos {
                     .addIndex(new IndexBuilder("IdSIM").addColumns("IdSIM"))
                     .toTable(db);
 
+            // Cambios de estado de las tablets: al devolverlas (IdExaminador = quién la devolvió) o
+            // al cambiarlo en su ficha. Igual que la crea ConstruirInterfaz si falta.
+            new TableBuilder("HistorialEstadosTablet")
+                    .addColumn(autonumerico("IdCambio"))
+                    .addColumn(entero("IdTablet", "Tablet"))
+                    .addColumn(fecha("Fecha", "Fecha", true))
+                    .addColumn(new ColumnBuilder("IdEstadoAnterior", DataType.LONG)
+                            .putProperty(PropertyMap.CAPTION_PROP, "Estado anterior"))
+                    .addColumn(entero("IdEstadoNuevo", "Estado nuevo"))
+                    .addColumn(new ColumnBuilder("IdExaminador", DataType.LONG)
+                            .putProperty(PropertyMap.CAPTION_PROP, "Devuelta por"))
+                    .addColumn(texto("Observaciones", 255, "Observaciones", false))
+                    .addIndex(clavePrimaria("IdCambio"))
+                    .addIndex(new IndexBuilder("IdTablet").addColumns("IdTablet"))
+                    .toTable(db);
+
             // Integridad referencial sin borrado en cascada: no se puede eliminar un examinador,
             // tablet o SIM con histórico (para retirarlos se cambia su situación / estado), ni un
             // estado que esté en uso.
@@ -149,6 +165,10 @@ public class GenerarBaseDatos {
             relacion(db, "Tablets", "AsignacionesSIM", "IdTablet");
             relacion(db, "TarjetasSIM", "AsignacionesSIM", "IdSIM");
             relacion(db, "EstadosSIM", "TarjetasSIM", "IdEstadoSIM");
+            relacion(db, "FK_HET_Tablet", "Tablets", "HistorialEstadosTablet", "IdTablet", "IdTablet");
+            relacion(db, "FK_HET_EstadoAnterior", "EstadosTablet", "HistorialEstadosTablet", "IdEstado", "IdEstadoAnterior");
+            relacion(db, "FK_HET_EstadoNuevo", "EstadosTablet", "HistorialEstadosTablet", "IdEstado", "IdEstadoNuevo");
+            relacion(db, "FK_HET_Examinador", "Examinadores", "HistorialEstadosTablet", "IdExaminador", "IdExaminador");
         }
 
         System.out.println("Creada " + salida.getAbsolutePath());
@@ -201,6 +221,16 @@ public class GenerarBaseDatos {
         new RelationshipBuilder(padre, hija)
                 .addColumns(columna, columna)
                 .setReferentialIntegrity()
+                .toRelationship(db);
+    }
+
+    /** Relación con nombre propio: hace falta cuando una tabla se relaciona dos veces con la misma. */
+    private static void relacion(Database db, String nombre, String padre, String hija,
+                                 String columnaPadre, String columnaHija) throws Exception {
+        new RelationshipBuilder(padre, hija)
+                .addColumns(columnaPadre, columnaHija)
+                .setReferentialIntegrity()
+                .setName(nombre)
                 .toRelationship(db);
     }
 }

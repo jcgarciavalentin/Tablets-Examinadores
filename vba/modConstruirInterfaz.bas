@@ -12,11 +12,11 @@ Private Const VISTA_HOJA_DATOS As Integer = 2
 Private Const DB_TEXT As Integer = 10
 
 Private Const FORMULARIOS As String = "frmMenu,frmExaminadores,frmTablets,frmTarjetasSIM,frmAsignarTablet," & _
-    "frmEstadosTablet,frmEstadosExaminador,frmEstadosSIM," & _
+    "frmEstadosTablet,frmEstadosExaminador,frmEstadosSIM,frmElegirEstado,frmSubHistorialEstadosTablet," & _
     "frmAsignarSIM,frmEstadoTablets,frmHistoricoTablets,frmHistoricoSIM,frmSubHistoricoTablets,frmSubHistoricoSIM," & _
     "frmSubHistorialExaminador," & _
     "frmSubHistorialTablet,frmSubHistorialSIMTablet,frmSubHistorialTabletsSIM,frmSubTabletsActuales,frmSubSIMActuales"
-Private Const CONSULTAS As String = "qryEstadoTablets,qryHistorialTablets,qryHistorialSIM," & _
+Private Const CONSULTAS As String = "qryEstadoTablets,qryHistorialTablets,qryHistorialSIM,qryHistorialEstadosTablet," & _
     "qryAsignacionesTabletActuales,qrySIMActuales"
 
 ' Descripciones legibles; una parte vacía no deja su separador suelto.
@@ -29,6 +29,7 @@ Private Const DESC_SIM As String = "M.IMEI & IIf(M.NumeroTelefono Is Null, '', '
 
 Public Function ConstruirInterfaz()
     BorrarObjetosPrevios
+    CrearTablasQueFalten
     CrearConsultas
 
     ' Hojas de datos de solo lectura. Los subformularios deben existir antes que sus formularios.
@@ -61,6 +62,10 @@ Public Function ConstruirInterfaz()
     CrearHojaDatos "frmEstadosSIM", "SELECT * FROM EstadosSIM ORDER BY EstadoSIM;", "Estados de SIM", _
         Array("EstadoSIM|Estado|6"), True
 
+    CrearHojaDatos "frmSubHistorialEstadosTablet", "qryHistorialEstadosTablet", "Histórico de estados", _
+        Array("Fecha|Fecha|2.4", "EstadoAnterior|De|2.8", "EstadoNuevo|A|2.8", "Examinador|Devuelta por|5", "Observaciones|Observaciones|5")
+
+    CrearFormElegirEstado
     CrearFormExaminadores
     CrearFormTablets
     CrearFormTarjetasSIM
@@ -108,6 +113,14 @@ Private Sub CrearConsultas()
         "SELECT S.IdAsignacionSIM, S.IdTablet, S.IdSIM, T.NumeroSerie, T.IMEI1, " & DESC_TABLET & " AS Tablet, " & _
         DESC_SIM & " AS SIM, S.FechaInicio, S.FechaFin, IIf(S.FechaFin Is Null, 'Sí', 'No') AS Vigente, S.Observaciones " & _
         DESDE_SIM & "ORDER BY S.FechaInicio DESC, S.IdAsignacionSIM DESC;"
+
+    db.CreateQueryDef "qryHistorialEstadosTablet", _
+        "SELECT H.IdCambio, H.IdTablet, H.Fecha, EA.Estado AS EstadoAnterior, EN.Estado AS EstadoNuevo, " & _
+        "IIf(H.IdExaminador Is Null, Null, " & DESC_EXAMINADOR & ") AS Examinador, H.Observaciones " & _
+        "FROM ((HistorialEstadosTablet AS H LEFT JOIN EstadosTablet AS EA ON H.IdEstadoAnterior = EA.IdEstado) " & _
+        "LEFT JOIN EstadosTablet AS EN ON H.IdEstadoNuevo = EN.IdEstado) " & _
+        "LEFT JOIN Examinadores AS E ON H.IdExaminador = E.IdExaminador " & _
+        "ORDER BY H.Fecha DESC, H.IdCambio DESC;"
 
     db.CreateQueryDef "qryEstadoTablets", _
         "SELECT T.IdTablet, T.NumeroSerie, T.Marca, T.Modelo, ET.Estado, Q.Examinador, Q.FechaInicio AS AsignadaDesde, S.SIM " & _
@@ -197,6 +210,8 @@ Private Sub CrearFormTablets()
 
     Subformulario f, "subHistorialExaminadores", "frmSubHistorialTablet", "Histórico de examinadores", 0.5, y, 17.5, 4, "IdTablet"
     Subformulario f, "subHistorialSIM", "frmSubHistorialSIMTablet", "Histórico de tarjetas SIM", 0.5, y + 4.9, 17.5, 3.5, "IdTablet"
+    Subformulario f, "subHistorialEstados", "frmSubHistorialEstadosTablet", "Histórico de estados", 0.5, y + 9.3, 17.5, 3.5, "IdTablet"
+    f.BeforeUpdate = "=RegistrarCambioEstadoFicha()"     ' anota los cambios de estado hechos a mano
     GuardarFormulario f, "frmTablets"
 End Sub
 
@@ -223,6 +238,28 @@ End Sub
 ' ---------------------------------------------------------------------------------------------
 ' Formularios de asignación (sin origen de datos; los botones llaman a modGestionTablets)
 ' ---------------------------------------------------------------------------------------------
+
+' Ventana que pregunta a qué estado pasa una tablet devuelta (PreguntarEstado en modGestionTablets).
+Private Sub CrearFormElegirEstado()
+    Dim f As Form, l As Control
+    Set f = NuevoFormulario("", "Tablet devuelta")
+    PrepararDialogo f
+    f.OnActivate = ""
+    f.PopUp = True
+    f.Modal = True
+    f.OnLoad = "=PrepararElegirEstado()"
+    Set l = CreateControl(f.Name, acLabel, acDetail, , , 0.5 * CM, 0.4 * CM, 12 * CM, 1.3 * CM)
+    l.Name = "lblMensaje"
+    l.Caption = "-"
+    l.FontBold = True
+    Combo f, "cboEstado", "", "Pasa a estado", 0.5, 2, 5, "SELECT IdEstado, Estado FROM EstadosTablet ORDER BY Estado;", "0;5"
+    Campo f, acTextBox, "txtNota", "", "Observaciones", 0.5, 2.8, 8.2
+    Boton f, "cmdAceptar", "Aceptar", "=AceptarEstado()", 4.3, 3.9, 3
+    Boton f, "cmdCancelar", "Cancelar", "=CancelarEstado()", 7.6, 3.9, 3
+    f.Width = 13 * CM
+    f.Section(acDetail).Height = 5 * CM
+    GuardarFormulario f, "frmElegirEstado"
+End Sub
 
 Private Sub CrearFormAsignarTablet()
     Dim f As Form, c As Control
@@ -326,6 +363,23 @@ Private Sub CrearMenu()
 
     f.Section(acDetail).Height = 8.8 * CM
     GuardarFormulario f, "frmMenu"
+End Sub
+
+' Tablas añadidas después de la primera versión de GestionTablets.accdb: se crean si no existen,
+' para no tener que sustituir una base de datos que ya tenga datos.
+Private Sub CrearTablasQueFalten()
+    Dim db As Object
+    Set db = CurrentDb
+    If Not Existe(CurrentData.AllTables, "HistorialEstadosTablet") Then
+        db.Execute "CREATE TABLE HistorialEstadosTablet (" & _
+            "IdCambio COUNTER CONSTRAINT PrimaryKey PRIMARY KEY, " & _
+            "IdTablet LONG NOT NULL CONSTRAINT FK_HET_Tablet REFERENCES Tablets (IdTablet), " & _
+            "Fecha DATETIME NOT NULL, " & _
+            "IdEstadoAnterior LONG CONSTRAINT FK_HET_EstadoAnterior REFERENCES EstadosTablet (IdEstado), " & _
+            "IdEstadoNuevo LONG NOT NULL CONSTRAINT FK_HET_EstadoNuevo REFERENCES EstadosTablet (IdEstado), " & _
+            "IdExaminador LONG CONSTRAINT FK_HET_Examinador REFERENCES Examinadores (IdExaminador), " & _
+            "Observaciones TEXT(255))", 128
+    End If
 End Sub
 
 Private Sub EstablecerFormularioInicio()

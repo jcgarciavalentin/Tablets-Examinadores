@@ -78,6 +78,7 @@ Formatos de fecha que entiende: 15/03/2023, 15-03-2023, 15.03.2023 y los número
 | `EstadosSIM` | IdEstadoSIM, EstadoSIM: *Activa, Suspendida, Baja* |
 | `AsignacionesTablet` | IdAsignacion, IdExaminador, IdTablet, FechaInicio, FechaFin, Observaciones |
 | `AsignacionesSIM` | IdAsignacionSIM, IdTablet, IdSIM, FechaInicio, FechaFin, Observaciones |
+| `HistorialEstadosTablet` | IdCambio, IdTablet, Fecha, IdEstadoAnterior, IdEstadoNuevo, IdExaminador (quién la devolvió), Observaciones |
 
 - Los valores iniciales de las tablas de estados son orientativos. Se cambian desde el menú
   (*Estados de tablet* / *Situaciones de examinador* / *Estados de SIM*).
@@ -100,18 +101,25 @@ Formatos de fecha que entiende: 15/03/2023, 15-03-2023, 15.03.2023 y los número
   (Activo, Baja…): desmarcándolas se ocultan los examinadores en esas situaciones. Las casillas se
   crean con las situaciones existentes al ejecutar `ConstruirFormularios.vbs`; si añades una
   situación nueva, vuelve a ejecutarlo para que aparezca su casilla.
-- **Tablets**: ficha con el histórico de examinadores y el de tarjetas SIM. Se busca por nº de
+- **Tablets**: ficha con el histórico de examinadores, el de tarjetas SIM y el de estados (las
+  devoluciones y los cambios de estado hechos a mano en la propia ficha). Se busca por nº de
   serie, IMEI 1, IMEI 2, marca o modelo.
 - **Tarjetas SIM**: ficha con el histórico de tablets en que ha estado. Se busca por IMEI o teléfono.
 - **Estados de tablet** / **Situaciones de examinador** / **Estados de SIM**: mantenimiento de las
   tablas auxiliares.
 
 **Asignaciones**
-- **Asignar / devolver tablet**: eliges examinador, tablet y fecha. Si la tablet ya tenía
-  examinador, o el examinador ya tenía tablet, la asignación anterior se cierra con esa fecha, previa
-  confirmación. *Registrar devolución* cierra la asignación vigente de la tablet elegida. Si la
-  tablet no está "Operativa", pide confirmación. Las tablets con fecha de desafectación no salen en
-  la lista.
+- **Asignar / devolver tablet**: eliges examinador, tablet y fecha.
+  - Si la tablet la tenía otro examinador, esa asignación se cierra con esa fecha, previa
+    confirmación.
+  - Si el examinador ya tenía otra tablet, se abre una ventana para elegir **a qué estado pasa la
+    tablet que devuelve** (con una observación opcional). Si cancelas, no se asigna nada.
+  - *Registrar devolución* cierra la asignación vigente de la tablet elegida y también pregunta a
+    qué estado pasa.
+  - El estado elegido se guarda en la tablet, en las observaciones de la asignación que se cierra y
+    en `HistorialEstadosTablet`.
+  - Si la tablet que vas a asignar no está "Operativa", pide confirmación. Las tablets con fecha de
+    desafectación no salen en la lista.
 - **Asociar / retirar SIM**: igual, entre tablet y tarjeta SIM. Si la SIM no está "Activa", pide
   confirmación.
 

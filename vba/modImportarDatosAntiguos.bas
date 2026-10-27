@@ -87,6 +87,9 @@ End Sub
 
 Private Sub VaciarTablasNuevas()
     Dim tabla As Variant
+    On Error Resume Next            ' no existe en bases creadas antes de añadir el historial de estados
+    baseNueva.Execute "DELETE FROM HistorialEstadosTablet", DB_FAIL_ON_ERROR
+    On Error GoTo 0
     For Each tabla In Array("AsignacionesSIM", "AsignacionesTablet", "TarjetasSIM", "Tablets", "Examinadores")
         baseNueva.Execute "DELETE FROM " & tabla, DB_FAIL_ON_ERROR
     Next

@@ -9,8 +9,16 @@ Option Explicit
 ' filas juntas forman el histórico. Al asignar se cierran, con la fecha de la nueva asignación,
 ' las asignaciones vigentes que entren en conflicto, de modo que en cada momento una tablet tiene
 ' como mucho un examinador y una SIM, y un examinador o una SIM como mucho una tablet.
+' Cuando un examinador devuelve una tablet se pregunta a qué estado pasa (frmElegirEstado) y el
+' cambio queda en HistorialEstadosTablet.
 
 Private Const FALLO_SI_ERROR As Long = 128   ' dbFailOnError
+
+' Comunicación con frmElegirEstado (ver PreguntarEstado)
+Private mensajeEstado As String
+Private estadoInicial As Variant
+Private estadoElegido As Variant
+Private notaElegida As Variant
 
 Public Function AbrirFormulario(ByVal nombre As String)
     DoCmd.OpenForm nombre
@@ -75,7 +83,7 @@ End Function
 
 Public Function AsignarTablet()
     Dim f As Object, idExaminador As Long, idTablet As Long, fecha As Date
-    Dim actual As Variant, aviso As String
+    Dim actual As Variant, aviso As String, idAntigua As Variant
 
     Set f = Forms("frmAsignarTablet")
     If Not DatosCompletos(f, "cboExaminador", "cboTablet") Then Exit Function
@@ -91,14 +99,21 @@ Public Function AsignarTablet()
     If Not TabletOperativa(idTablet) Then Exit Function
 
     actual = DLookup("Examinador", "qryAsignacionesTabletActuales", "IdTablet = " & idTablet)
-    If Not IsNull(actual) Then aviso = aviso & "- La tablet está asignada ahora a " & actual & "." & vbCrLf
-    actual = DLookup("Tablet", "qryAsignacionesTabletActuales", "IdExaminador = " & idExaminador)
-    If Not IsNull(actual) Then aviso = aviso & "- El examinador tiene ahora la tablet " & actual & "." & vbCrLf
+    If Not IsNull(actual) Then aviso = "- La tablet está asignada ahora a " & actual & "." & vbCrLf
     If Not ConfirmarCierre(aviso, fecha) Then Exit Function
     If Not FechaPosterior("AsignacionesTablet", "IdTablet = " & idTablet & " OR IdExaminador = " & idExaminador, fecha) Then Exit Function
 
+    ' Si el examinador ya tenía otra tablet, la devuelve: se pregunta a qué estado pasa.
+    idAntigua = DLookup("IdTablet", "qryAsignacionesTabletActuales", "IdExaminador = " & idExaminador)
+    If Not IsNull(idAntigua) Then
+        If Not PreguntarEstado(DLookup("Examinador", "qryAsignacionesTabletActuales", "IdExaminador = " & idExaminador) & _
+                               " devuelve la tablet " & DLookup("Tablet", "qryAsignacionesTabletActuales", "IdTablet = " & idAntigua) & _
+                               " el " & Format(fecha, "dd/mm/yyyy") & ".", idAntigua) Then Exit Function
+    End If
+
     On Error GoTo Fallo
     DBEngine.BeginTrans
+    If Not IsNull(idAntigua) Then RegistrarDevolucion idAntigua, idExaminador, fecha
     Ejecutar "PARAMETERS pFecha DateTime, pTablet Long, pExaminador Long; " & _
              "UPDATE AsignacionesTablet SET FechaFin = pFecha " & _
              "WHERE FechaFin Is Null AND (IdTablet = pTablet OR IdExaminador = pExaminador);", _
@@ -117,7 +132,7 @@ Fallo:
 End Function
 
 Public Function DevolverTablet()
-    Dim f As Object, idTablet As Long, fecha As Date, actual As Variant
+    Dim f As Object, idTablet As Long, fecha As Date, actual As Variant, idExaminador As Variant
 
     Set f = Forms("frmAsignarTablet")
     If Not DatosCompletos(f, "cboTablet") Then Exit Function
@@ -127,13 +142,93 @@ Public Function DevolverTablet()
     actual = DLookup("Examinador", "qryAsignacionesTabletActuales", "IdTablet = " & idTablet)
     If IsNull(actual) Then MsgBox "Esa tablet no está asignada a ningún examinador.", vbInformation: Exit Function
     If Not FechaPosterior("AsignacionesTablet", "IdTablet = " & idTablet, fecha) Then Exit Function
-    If MsgBox("¿Registrar que " & actual & " devuelve la tablet con fecha " & Format(fecha, "dd/mm/yyyy") & "?", _
-              vbQuestion + vbYesNo) = vbNo Then Exit Function
+    idExaminador = DLookup("IdExaminador", "qryAsignacionesTabletActuales", "IdTablet = " & idTablet)
+    If Not PreguntarEstado(actual & " devuelve la tablet " & _
+                           DLookup("Tablet", "qryAsignacionesTabletActuales", "IdTablet = " & idTablet) & _
+                           " el " & Format(fecha, "dd/mm/yyyy") & ".", idTablet) Then Exit Function
 
+    On Error GoTo Fallo
+    DBEngine.BeginTrans
+    RegistrarDevolucion idTablet, idExaminador, fecha
+    ' Por si hubiera más de una asignación vigente de la tablet (datos antiguos)
     Ejecutar "PARAMETERS pFecha DateTime, pTablet Long; " & _
              "UPDATE AsignacionesTablet SET FechaFin = pFecha WHERE FechaFin Is Null AND IdTablet = pTablet;", _
              fecha, idTablet
+    DBEngine.CommitTrans
     Terminar f, "Devolución registrada."
+    Exit Function
+
+Fallo:
+    DBEngine.Rollback
+    MsgBox "No se pudo guardar la devolución: " & Err.Description, vbCritical
+End Function
+
+' Abre frmElegirEstado para preguntar a qué estado pasa la tablet devuelta. Devuelve False si se
+' cancela; si se acepta, el estado y la nota quedan en estadoElegido y notaElegida.
+Private Function PreguntarEstado(ByVal mensaje As String, ByVal idTablet As Long) As Boolean
+    mensajeEstado = mensaje & vbCrLf & "¿A qué estado pasa la tablet?"
+    estadoInicial = DLookup("IdEstado", "Tablets", "IdTablet = " & idTablet)
+    estadoElegido = Null
+    notaElegida = Null
+    DoCmd.OpenForm "frmElegirEstado", WindowMode:=acDialog      ' espera hasta que se cierre
+    PreguntarEstado = Not IsNull(estadoElegido)
+End Function
+
+Public Function PrepararElegirEstado()
+    With Forms("frmElegirEstado")
+        !lblMensaje.Caption = mensajeEstado
+        !cboEstado = estadoInicial
+    End With
+End Function
+
+Public Function AceptarEstado()
+    Dim f As Object
+    Set f = Forms("frmElegirEstado")
+    If IsNull(f!cboEstado) Then MsgBox "Elige el estado al que pasa la tablet.", vbExclamation: Exit Function
+    estadoElegido = f!cboEstado.Value
+    notaElegida = f!txtNota.Value
+    DoCmd.Close acForm, "frmElegirEstado"
+End Function
+
+Public Function CancelarEstado()
+    DoCmd.Close acForm, "frmElegirEstado"
+End Function
+
+' Cierra la asignación vigente de la tablet devuelta anotando en ella el estado al que pasa, cambia
+' el estado de la tablet y lo registra en HistorialEstadosTablet. Va dentro de una transacción y usa
+' el estado elegido en PreguntarEstado.
+Private Sub RegistrarDevolucion(ByVal idTablet As Long, ByVal idExaminador As Long, ByVal fecha As Date)
+    Dim estadoAnterior As Variant, nota As String
+    estadoAnterior = DLookup("IdEstado", "Tablets", "IdTablet = " & idTablet)
+    nota = "Devuelta. Pasa a estado: " & DLookup("Estado", "EstadosTablet", "IdEstado = " & estadoElegido)
+    If Len(Nz(notaElegida, "")) > 0 Then nota = nota & " (" & notaElegida & ")"
+
+    Ejecutar "PARAMETERS pFecha DateTime, pTablet Long, pExaminador Long, pNota Text(255); " & _
+             "UPDATE AsignacionesTablet SET FechaFin = pFecha, " & _
+             "Observaciones = Left(IIf(Observaciones Is Null, '', Observaciones & ' | ') & pNota, 255) " & _
+             "WHERE FechaFin Is Null AND IdTablet = pTablet AND IdExaminador = pExaminador;", _
+             fecha, idTablet, idExaminador, Left$(nota, 255)
+    Ejecutar "PARAMETERS pEstado Long, pTablet Long; UPDATE Tablets SET IdEstado = pEstado WHERE IdTablet = pTablet;", _
+             estadoElegido, idTablet
+    AnotarEstado idTablet, fecha, estadoAnterior, estadoElegido, idExaminador, _
+                 "Devolución" & IIf(Len(Nz(notaElegida, "")) > 0, ": " & notaElegida, "")
+End Sub
+
+Private Sub AnotarEstado(ByVal idTablet As Long, ByVal fecha As Date, ByVal estadoAnterior As Variant, _
+                         ByVal estadoNuevo As Variant, ByVal idExaminador As Variant, ByVal observaciones As String)
+    Ejecutar "PARAMETERS pTablet Long, pFecha DateTime, pAnterior Long, pNuevo Long, pExaminador Long, pObs Text(255); " & _
+             "INSERT INTO HistorialEstadosTablet (IdTablet, Fecha, IdEstadoAnterior, IdEstadoNuevo, IdExaminador, Observaciones) " & _
+             "VALUES (pTablet, pFecha, pAnterior, pNuevo, pExaminador, pObs);", _
+             idTablet, fecha, estadoAnterior, estadoNuevo, idExaminador, Left$(observaciones, 255)
+End Sub
+
+' Antes de guardar la ficha de una tablet: si se ha cambiado su estado a mano, se anota.
+Public Function RegistrarCambioEstadoFicha()
+    Dim f As Object
+    Set f = Forms("frmTablets")
+    If f.NewRecord Then Exit Function
+    If Nz(f!IdEstado.OldValue, 0) = Nz(f!IdEstado.Value, 0) Then Exit Function
+    AnotarEstado f!IdTablet, Date, f!IdEstado.OldValue, f!IdEstado.Value, Null, "Cambio en la ficha de la tablet"
 End Function
 
 Public Function AsignarSIM()
