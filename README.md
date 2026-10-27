@@ -96,7 +96,10 @@ Formatos de fecha que entiende: 15/03/2023, 15-03-2023, 15.03.2023 y los número
 **Datos**
 - **Examinadores**: ficha con el histórico de tablets que ha tenido. Se busca por nº de
   examinador, nombre, apellidos (también "nombre apellidos"), DNI, o por el IMEI 1 o nº de serie de
-  la tablet que tiene asignada en ese momento.
+  la tablet que tiene asignada en ese momento. Bajo el buscador hay una casilla por cada situación
+  (Activo, Baja…): desmarcándolas se ocultan los examinadores en esas situaciones. Las casillas se
+  crean con las situaciones existentes al ejecutar `ConstruirFormularios.vbs`; si añades una
+  situación nueva, vuelve a ejecutarlo para que aparezca su casilla.
 - **Tablets**: ficha con el histórico de examinadores y el de tarjetas SIM. Se busca por nº de
   serie, IMEI 1, IMEI 2, marca o modelo.
 - **Tarjetas SIM**: ficha con el histórico de tablets en que ha estado. Se busca por IMEI o teléfono.
@@ -119,7 +122,8 @@ Formatos de fecha que entiende: 15/03/2023, 15-03-2023, 15.03.2023 y los número
 - **Histórico tablet - SIM**: se busca por IMEI o teléfono de la SIM, o por nº de serie o IMEI 1 de
   la tablet.
 
-En los buscadores escribes el texto (vale una parte) y pulsas **Intro**. **Ver todos** quita el filtro.
+En los buscadores escribes el texto (vale una parte) y pulsas **Intro**. **Ver todos** quita el filtro
+(y vuelve a marcar todas las casillas de situación).
 
 ## Contenido del proyecto
 

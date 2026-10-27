@@ -128,7 +128,7 @@ Private Sub CrearFormExaminadores()
     Buscador f, "FiltrarFormulario", "Examinadores", _
         "Nº examinador, nombre, apellidos, DNI, o IMEI 1 / nº serie de la tablet que tiene"
 
-    y = 2.4
+    y = CasillasSituacion(f, 2.4)
     Campo f, acTextBox, "NumeroExaminador", "NumeroExaminador", "Nº de examinador", 0.5, y, 3: y = y + 0.8
     Campo f, acTextBox, "Nombre", "Nombre", "Nombre", 0.5, y, 6: y = y + 0.8
     Campo f, acTextBox, "Apellidos", "Apellidos", "Apellidos", 0.5, y, 9: y = y + 0.8
@@ -140,6 +140,37 @@ Private Sub CrearFormExaminadores()
     Subformulario f, "subHistorial", "frmSubHistorialExaminador", "Histórico de tablets asignadas", 0.5, y, 17.5, 5, "IdExaminador"
     GuardarFormulario f, "frmExaminadores"
 End Sub
+
+' Una casilla por situación de EstadosExaminador para limitar el buscador (FiltroCasillas en
+' modGestionTablets). Se crean con las situaciones que haya al construir el formulario: si se añaden
+' más, hay que volver a ejecutar ConstruirFormularios.vbs. Devuelve la posición libre siguiente.
+Private Function CasillasSituacion(ByVal f As Form, ByVal y As Single) As Single
+    Dim db As Object, r As Object, c As Control, l As Control, x As Single, i As Long
+    Set l = CreateControl(f.Name, acLabel, acDetail, , , 0.5 * CM, y * CM, 3.6 * CM, 0.6 * CM)
+    l.Caption = "Mostrar situación:"
+    l.FontBold = True
+    Set db = CurrentDb
+    Set r = db.OpenRecordset("SELECT IdEstadoExam, EstadoExaminador FROM EstadosExaminador ORDER BY EstadoExaminador;", 4)
+    x = 4.3
+    Do Until r.EOF
+        If x > 15.2 Then
+            x = 4.3
+            y = y + 0.7
+        End If
+        Set c = CreateControl(f.Name, acCheckBox, acDetail, , , x * CM, (y + 0.1) * CM)
+        c.Name = "chkEstado" & i
+        c.Tag = "IdEstadoExam|" & r!IdEstadoExam
+        c.DefaultValue = "True"
+        c.AfterUpdate = "=FiltrarFormulario(""Examinadores"")"
+        Set l = CreateControl(f.Name, acLabel, acDetail, c.Name, , (x + 0.5) * CM, y * CM, 3 * CM, 0.6 * CM)
+        l.Caption = r!EstadoExaminador
+        x = x + 3.6
+        i = i + 1
+        r.MoveNext
+    Loop
+    r.Close
+    CasillasSituacion = y + 0.9
+End Function
 
 Private Sub CrearFormTablets()
     Dim f As Form, c As Control, y As Single

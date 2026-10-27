@@ -53,9 +53,12 @@ Private Function CamposBusqueda(ByVal clave As String) As String
 End Function
 
 Public Function QuitarFiltro()
-    Dim f As Object, destino As Object
+    Dim f As Object, destino As Object, c As Object
     Set f = Screen.ActiveForm
     f!txtBuscar = Null
+    For Each c In f.Controls
+        If c.Name Like "chkEstado*" Then c.Value = True
+    Next
     Set destino = f
     On Error Resume Next            ' sin subResultados, el filtro está en el propio formulario
     Set destino = f!subResultados.Form
@@ -196,32 +199,65 @@ Public Function RetirarSIM()
     Terminar f, "Tarjeta SIM retirada."
 End Function
 
+' Combina el texto del buscador con las casillas de situación (si el formulario las tiene).
 Private Sub AplicarFiltro(ByVal f As Object, ByVal destino As Object, ByVal campos As String)
-    Dim texto As String, campo As Variant, filtro As String, patron As String
+    Dim texto As String, campo As Variant, filtro As String, patron As String, casillas As String
     texto = Trim$(Nz(f!txtBuscar, ""))
-    If Len(texto) = 0 Then
+    If Len(texto) > 0 Then
+        ' Comillas duplicadas y comodines de Like (* ? # [) tratados como texto normal
+        texto = Replace(texto, "'", "''")
+        texto = Replace(texto, "[", "[[]")
+        texto = Replace(texto, "*", "[*]")
+        texto = Replace(texto, "?", "[?]")
+        texto = Replace(texto, "#", "[#]")
+        patron = "'*" & texto & "*'"
+        For Each campo In Split(campos, ";")
+            If InStr(campo, "{patron}") > 0 Then
+                filtro = filtro & " OR (" & Replace(campo, "{patron}", patron) & ")"
+            Else
+                filtro = filtro & " OR (" & campo & ") Like " & patron
+            End If
+        Next
+        filtro = "(" & Mid$(filtro, 5) & ")"
+    End If
+    casillas = FiltroCasillas(f)
+    If Len(casillas) > 0 Then
+        If Len(filtro) > 0 Then filtro = filtro & " AND "
+        filtro = filtro & "(" & casillas & ")"
+    End If
+
+    If destino.Dirty Then destino.Dirty = False
+    If Len(filtro) = 0 Then
         destino.FilterOn = False
         Exit Sub
     End If
-    ' Comillas duplicadas y comodines de Like (* ? # [) tratados como texto normal
-    texto = Replace(texto, "'", "''")
-    texto = Replace(texto, "[", "[[]")
-    texto = Replace(texto, "*", "[*]")
-    texto = Replace(texto, "?", "[?]")
-    texto = Replace(texto, "#", "[#]")
-    patron = "'*" & texto & "*'"
-    For Each campo In Split(campos, ";")
-        If InStr(campo, "{patron}") > 0 Then
-            filtro = filtro & " OR (" & Replace(campo, "{patron}", patron) & ")"
-        Else
-            filtro = filtro & " OR (" & campo & ") Like " & patron
+    destino.Filter = filtro
+    destino.FilterOn = True
+    If destino.RecordsetClone.RecordCount = 0 Then MsgBox "No hay ningún registro que cumpla la búsqueda.", vbInformation
+End Sub
+
+' Casillas chkEstado* del formulario; su Tag es "campo|Id". Devuelve la condición para las marcadas,
+' o "" si están todas marcadas o el formulario no tiene casillas.
+Private Function FiltroCasillas(ByVal f As Object) As String
+    Dim c As Object, partes() As String, campo As String, ids As String, total As Long, marcadas As Long
+    For Each c In f.Controls
+        If c.Name Like "chkEstado*" Then
+            partes = Split(c.Tag, "|")
+            campo = partes(0)
+            total = total + 1
+            If Nz(c.Value, False) Then
+                marcadas = marcadas + 1
+                ids = ids & "," & partes(1)
+            End If
         End If
     Next
-    If destino.Dirty Then destino.Dirty = False
-    destino.Filter = Mid$(filtro, 5)
-    destino.FilterOn = True
-    If destino.RecordsetClone.RecordCount = 0 Then MsgBox "No se ha encontrado nada con ese texto.", vbInformation
-End Sub
+    If total = 0 Or marcadas = total Then Exit Function
+    If marcadas = 0 Then
+        FiltroCasillas = "1 = 0"            ' ninguna marcada: no se muestra nada
+    Else
+        FiltroCasillas = campo & " IN (" & Mid$(ids, 2) & ")"
+    End If
+End Function
 
 Private Function DatosCompletos(ByVal f As Object, ParamArray controles() As Variant) As Boolean
     Dim i As Long
