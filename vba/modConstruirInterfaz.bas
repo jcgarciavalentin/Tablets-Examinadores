@@ -22,6 +22,9 @@ Private Const CONSULTAS As String = "qryEstadoTablets,qryHistorialTablets,qryHis
 ' Descripciones legibles; una parte vacía no deja su separador suelto.
 Private Const DESC_EXAMINADOR As String = "E.Apellidos & ', ' & E.Nombre & IIf(E.NumeroExaminador Is Null, '', ' (' & E.NumeroExaminador & ')')"
 Private Const DESC_TABLET As String = "T.NumeroSerie & IIf(T.Marca Is Null, '', ' - ' & T.Marca) & IIf(T.Modelo Is Null, '', ' ' & T.Modelo)"
+' Columnas de los desplegables de tablet de los formularios de asignación (anchos en cm, Id oculto).
+Private Const COLUMNAS_TABLET As String = "T.NumeroSerie AS [Nº de serie], T.IMEI1 AS [IMEI 1], T.Marca, T.Modelo, ET.Estado"
+Private Const ANCHOS_TABLET As String = "0;3;3.5;2.5;2.5;2.3"
 Private Const DESC_SIM As String = "M.IMEI & IIf(M.NumeroTelefono Is Null, '', ' - ' & M.NumeroTelefono)"
 
 Public Function ConstruirInterfaz()
@@ -202,11 +205,13 @@ Private Sub CrearFormAsignarTablet()
         "FROM (Examinadores AS E LEFT JOIN EstadosExaminador AS EE ON E.IdEstadoExam = EE.IdEstadoExam) " & _
         "LEFT JOIN qryAsignacionesTabletActuales AS Q ON E.IdExaminador = Q.IdExaminador " & _
         "ORDER BY E.Apellidos, E.Nombre;", "0;6.5;2.5;6"
-    Combo f, "cboTablet", "", "Tablet", 0.5, 2.6, 8, _
-        "SELECT T.IdTablet, " & DESC_TABLET & " AS Tablet, ET.Estado, Q.Examinador " & _
+    ' Cada dato en su columna: el desplegable cerrado muestra solo la primera visible (nº de serie).
+    Set c = Combo(f, "cboTablet", "", "Tablet", 0.5, 2.6, 8, _
+        "SELECT T.IdTablet, " & COLUMNAS_TABLET & ", Q.Examinador AS [Asignada a] " & _
         "FROM (Tablets AS T LEFT JOIN EstadosTablet AS ET ON T.IdEstado = ET.IdEstado) " & _
         "LEFT JOIN qryAsignacionesTabletActuales AS Q ON T.IdTablet = Q.IdTablet " & _
-        "WHERE T.FechaDesafectacion Is Null ORDER BY T.NumeroSerie;", "0;6;2.5;6.5"
+        "WHERE T.FechaDesafectacion Is Null ORDER BY T.NumeroSerie;", ANCHOS_TABLET & ";5.5")
+    c.ColumnHeads = True
     CamposFechaYObservaciones f, "Fecha"
 
     Boton f, "cmdAsignar", "Asignar tablet", "=AsignarTablet()", 4.3, 5.2, 4.5
@@ -219,20 +224,22 @@ Private Sub CrearFormAsignarTablet()
 End Sub
 
 Private Sub CrearFormAsignarSIM()
-    Dim f As Form
+    Dim f As Form, c As Control
     Set f = NuevoFormulario("", "Asociar / retirar tarjeta SIM")
     PrepararDialogo f
     PonerTitulo f, "Tarjetas SIM de las tablets"
 
-    Combo f, "cboTablet", "", "Tablet", 0.5, 1.8, 8, _
-        "SELECT T.IdTablet, " & DESC_TABLET & " AS Tablet, ET.Estado, S.SIM " & _
+    Set c = Combo(f, "cboTablet", "", "Tablet", 0.5, 1.8, 8, _
+        "SELECT T.IdTablet, " & COLUMNAS_TABLET & ", S.SIM AS [SIM actual] " & _
         "FROM (Tablets AS T LEFT JOIN EstadosTablet AS ET ON T.IdEstado = ET.IdEstado) " & _
         "LEFT JOIN qrySIMActuales AS S ON T.IdTablet = S.IdTablet " & _
-        "WHERE T.FechaDesafectacion Is Null ORDER BY T.NumeroSerie;", "0;6;2.5;5"
-    Combo f, "cboSIM", "", "Tarjeta SIM", 0.5, 2.6, 8, _
-        "SELECT M.IdSIM, " & DESC_SIM & " AS SIM, ES.EstadoSIM, S.Tablet " & _
+        "WHERE T.FechaDesafectacion Is Null ORDER BY T.NumeroSerie;", ANCHOS_TABLET & ";5.5")
+    c.ColumnHeads = True
+    Set c = Combo(f, "cboSIM", "", "Tarjeta SIM", 0.5, 2.6, 8, _
+        "SELECT M.IdSIM, M.IMEI, M.NumeroTelefono AS [Teléfono], ES.EstadoSIM AS Estado, S.Tablet AS [En la tablet] " & _
         "FROM (TarjetasSIM AS M LEFT JOIN EstadosSIM AS ES ON M.IdEstadoSIM = ES.IdEstadoSIM) " & _
-        "LEFT JOIN qrySIMActuales AS S ON M.IdSIM = S.IdSIM ORDER BY M.IMEI;", "0;6;2.5;6"
+        "LEFT JOIN qrySIMActuales AS S ON M.IdSIM = S.IdSIM ORDER BY M.IMEI;", "0;5;3;2.3;5.5")
+    c.ColumnHeads = True
     CamposFechaYObservaciones f, "Fecha"
 
     Boton f, "cmdAsignar", "Asociar SIM", "=AsignarSIM()", 4.3, 5.2, 4.5
