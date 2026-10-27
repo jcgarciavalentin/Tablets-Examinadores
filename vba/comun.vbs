@@ -34,6 +34,7 @@ Sub AplicarCambios(rutaBD)
 
     Set acc = CreateObject("Access.Application")
     acc.OpenCurrentDatabase rutaBD
+    CerrarFormularios acc           ' el menú se abre solo al arrancar y hay que poder rehacerlo
     hayDatos = TieneDatos(acc)
 
     ' ¿Se conservan los datos? Si no, se importan de la base antigua o se deja vacía.
@@ -81,10 +82,10 @@ Sub AplicarCambios(rutaBD)
         Else
             resultado = acc.Run("VaciarDatos")
         End If
-        acc.DoCmd.DeleteObject AC_MODULE, "modImportarDatosAntiguos"
+        BorrarModulo acc, "modImportarDatosAntiguos"
     End If
     acc.Run "ConstruirInterfaz"
-    acc.DoCmd.DeleteObject AC_MODULE, "modConstruirInterfaz"
+    BorrarModulo acc, "modConstruirInterfaz"
     Cerrar acc
 
     mensaje = "Cambios aplicados a:" & vbCrLf & rutaBD & vbCrLf & vbCrLf
@@ -122,10 +123,26 @@ Function TieneDatos(acc)
 End Function
 
 Sub CargarModulo(acc, nombre)
-    On Error Resume Next            ' si ya existía de una ejecución anterior, se sustituye
-    acc.DoCmd.DeleteObject AC_MODULE, nombre
-    On Error GoTo 0
+    BorrarModulo acc, nombre        ' si ya existía de una ejecución anterior, se sustituye
     acc.LoadFromText AC_MODULE, nombre, fso.BuildPath(carpeta, "vba\" & nombre & ".bas")
+End Sub
+
+' Solo si existe: con Access visible, borrar un módulo que no existe muestra un error en pantalla
+' aunque el script lo ignore.
+Sub BorrarModulo(acc, nombre)
+    Dim m
+    For Each m In acc.CurrentProject.AllModules
+        If LCase(m.Name) = LCase(nombre) Then
+            acc.DoCmd.DeleteObject AC_MODULE, m.Name
+            Exit Sub
+        End If
+    Next
+End Sub
+
+Sub CerrarFormularios(acc)
+    Do While acc.Forms.Count > 0
+        acc.DoCmd.Close 2, acc.Forms(0).Name        ' 2 = acForm
+    Loop
 End Sub
 
 Sub Cerrar(acc)
