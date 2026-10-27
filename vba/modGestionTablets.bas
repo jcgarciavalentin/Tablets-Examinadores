@@ -75,6 +75,89 @@ Public Function QuitarFiltro()
     destino.FilterOn = False
 End Function
 
+' ---------------------------------------------------------------------------------------------
+' Base de datos dividida: los datos (tablas) en un fichero ..._Datos.accdb compartido y este
+' fichero, con formularios y código, en cada equipo con las tablas vinculadas a él.
+' ---------------------------------------------------------------------------------------------
+
+' Ruta del fichero de datos si las tablas están vinculadas; "" si los datos están en este fichero.
+Public Function FicheroDatos() As String
+    Dim db As Object, conexion As String, p As Long
+    Set db = CurrentDb
+    On Error Resume Next
+    conexion = db.TableDefs("Tablets").Connect
+    On Error GoTo 0
+    p = InStr(1, conexion, ";DATABASE=", vbTextCompare)
+    If p = 0 Then Exit Function
+    conexion = Mid$(conexion, p + Len(";DATABASE="))
+    If InStr(conexion, ";") > 0 Then conexion = Left$(conexion, InStr(conexion, ";") - 1)
+    FicheroDatos = conexion
+End Function
+
+' Al abrir la base (frmMenu): si el fichero de datos no está donde se esperaba, pide buscarlo.
+Public Function ComprobarVinculos()
+    Dim ruta As String
+    If Not Application.UserControl Then Exit Function      ' abierta por un script: lo comprueba él
+    ruta = FicheroDatos()
+    If Len(ruta) = 0 Then Exit Function
+    If Len(Dir(ruta)) > 0 Then Exit Function
+    MsgBox "No se encuentra el fichero con los datos:" & vbCrLf & ruta & vbCrLf & vbCrLf & _
+           "Indica dónde está (normalmente en la carpeta compartida de la red).", vbExclamation
+    CambiarFicheroDatos
+End Function
+
+' Botón "Ubicación de los datos" del menú: vincula las tablas a otro fichero de datos.
+Public Function CambiarFicheroDatos()
+    Dim actual As String, ruta As String
+    actual = FicheroDatos()
+    If Len(actual) = 0 Then
+        MsgBox "Los datos están dentro de esta misma base de datos (no está dividida).", vbInformation
+        Exit Function
+    End If
+    With Application.FileDialog(3)                  ' msoFileDialogFilePicker
+        .Title = "Elige el fichero de datos (..._Datos.accdb)"
+        .AllowMultiSelect = False
+        .Filters.Clear
+        .Filters.Add "Bases de datos de Access", "*.accdb"
+        .InitialFileName = actual
+        If .Show <> -1 Then Exit Function
+        ruta = .SelectedItems(1)
+    End With
+    VincularTablas ruta
+    MsgBox "Los datos se leen ahora de:" & vbCrLf & ruta, vbInformation
+End Function
+
+' Vincula este fichero a las tablas de rutaDatos: las ya vinculadas se reapuntan y las que falten
+' (tablas nuevas de una actualización) se vinculan. ImportacionIncidencias es siempre local.
+Public Sub VincularTablas(ByVal rutaDatos As String)
+    Dim db As Object, datos As Object, td As Object, vinculo As Object
+    Set db = CurrentDb
+    Set datos = DBEngine.OpenDatabase(rutaDatos)
+    For Each td In datos.TableDefs
+        If Left$(td.Name, 4) <> "MSys" And Left$(td.Name, 1) <> "~" And td.Name <> "ImportacionIncidencias" Then
+            If ExisteTabla(db, td.Name) Then
+                Set vinculo = db.TableDefs(td.Name)
+                If Len(vinculo.Connect) > 0 Then
+                    vinculo.Connect = ";DATABASE=" & rutaDatos
+                    vinculo.RefreshLink
+                End If
+            Else
+                DoCmd.TransferDatabase acLink, "Microsoft Access", rutaDatos, acTable, td.Name, td.Name
+            End If
+        End If
+    Next
+    datos.Close
+    db.TableDefs.Refresh
+    Application.RefreshDatabaseWindow
+End Sub
+
+Public Function ExisteTabla(ByVal db As Object, ByVal nombre As String) As Boolean
+    Dim td As Object
+    For Each td In db.TableDefs
+        If StrComp(td.Name, nombre, vbTextCompare) = 0 Then ExisteTabla = True: Exit Function
+    Next
+End Function
+
 ' Al volver a un formulario, recarga sus listas y subformularios por si se han dado de alta
 ' datos en otra ventana.
 Public Function RefrescarListas()

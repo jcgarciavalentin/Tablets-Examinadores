@@ -358,6 +358,7 @@ Private Sub CrearMenu()
     Set f = NuevoFormulario("", "Gestión de tablets")
     PrepararDialogo f
     f.OnActivate = ""
+    f.OnLoad = "=ComprobarVinculos()"        ' si los datos están en otro fichero, que se encuentre
     PonerTitulo f, "Gestión de tablets"
 
     Seccion f, "Datos", 0.5
@@ -377,6 +378,7 @@ Private Sub CrearMenu()
     Boton f, "cmdEstado", "Situación actual", "=AbrirHojaDatos(""frmEstadoTablets"")", 12.5, 2.2, 5.5
     Boton f, "cmdHistTablets", "Histórico examinador - tablet", "=AbrirFormulario(""frmHistoricoTablets"")", 12.5, 3.2, 5.5
     Boton f, "cmdHistSIM", "Histórico tablet - SIM", "=AbrirFormulario(""frmHistoricoSIM"")", 12.5, 4.2, 5.5
+    Boton f, "cmdDatos", "Ubicación de los datos", "=CambiarFicheroDatos()", 12.5, 5.5, 5.5
 
     f.Section(acDetail).Height = 9.8 * CM
     GuardarFormulario f, "frmMenu"
@@ -384,10 +386,14 @@ End Sub
 
 ' Tablas añadidas después de la primera versión de GestionTablets.accdb: se crean si no existen,
 ' para no tener que sustituir una base de datos que ya tenga datos.
+' Si la base está dividida, los cambios se hacen en el fichero de datos y después se vinculan las
+' tablas nuevas (VincularTablas, en modGestionTablets).
 Private Sub CrearTablasQueFalten()
-    Dim db As Object, td As Object, compania As Variant, idNA As Variant
-    Set db = CurrentDb
-    If Not Existe(CurrentData.AllTables, "HistorialEstadosTablet") Then
+    Dim db As Object, td As Object, rs As Object, compania As Variant, idNA As Variant, datos As String
+    datos = FicheroDatos()
+    If Len(datos) > 0 Then Set db = DBEngine.OpenDatabase(datos) Else Set db = CurrentDb
+
+    If Not ExisteTabla(db, "HistorialEstadosTablet") Then
         db.Execute "CREATE TABLE HistorialEstadosTablet (" & _
             "IdCambio COUNTER CONSTRAINT PrimaryKey PRIMARY KEY, " & _
             "IdTablet LONG NOT NULL CONSTRAINT FK_HET_Tablet REFERENCES Tablets (IdTablet), " & _
@@ -399,7 +405,7 @@ Private Sub CrearTablasQueFalten()
     End If
 
     ' Compañías de las SIM; N/A es la compañía por defecto
-    If Not Existe(CurrentData.AllTables, "Companias") Then
+    If Not ExisteTabla(db, "Companias") Then
         db.Execute "CREATE TABLE Companias (IdCompania COUNTER CONSTRAINT PrimaryKey PRIMARY KEY, " & _
                    "Compania TEXT(50) NOT NULL CONSTRAINT UQ_Compania UNIQUE)", 128
         For Each compania In Array("N/A", "Movistar", "Orange", "Vodafone")
@@ -407,7 +413,9 @@ Private Sub CrearTablasQueFalten()
         Next
     End If
     If Not ExisteCampo(db, "TarjetasSIM", "IdCompania") Then
-        idNA = DLookup("IdCompania", "Companias", "Compania = 'N/A'")
+        Set rs = db.OpenRecordset("SELECT IdCompania FROM Companias WHERE Compania = 'N/A';", 4)
+        idNA = rs!IdCompania
+        rs.Close
         db.Execute "ALTER TABLE TarjetasSIM ADD COLUMN IdCompania LONG " & _
                    "CONSTRAINT FK_SIM_Compania REFERENCES Companias (IdCompania)", 128
         db.Execute "UPDATE TarjetasSIM SET IdCompania = " & idNA, 128
@@ -423,7 +431,33 @@ Private Sub CrearTablasQueFalten()
         Set td = db.TableDefs("TarjetasSIM")
         td.Fields.Append td.CreateField("Foto", DB_ATTACHMENT)
     End If
+
+    If Len(datos) > 0 Then
+        db.Close
+        VincularTablas datos
+    End If
 End Sub
+
+' La usa dividir_base_datos.vbs una sola vez, después de copiar este fichero como fichero de datos:
+' quita de aquí las tablas (y sus relaciones) y las vincula a rutaDatos. ImportacionIncidencias se
+' queda como tabla local.
+Public Function DividirBaseDatos(ByVal rutaDatos As String) As String
+    Dim db As Object, td As Object, i As Long, nombres As String, nombre As Variant
+    Set db = CurrentDb
+    For i = db.Relations.Count - 1 To 0 Step -1
+        If Left$(db.Relations(i).Table, 4) <> "MSys" Then db.Relations.Delete db.Relations(i).Name
+    Next
+    For Each td In db.TableDefs
+        If Left$(td.Name, 4) <> "MSys" And Left$(td.Name, 1) <> "~" And Len(td.Connect) = 0 _
+           And td.Name <> "ImportacionIncidencias" Then nombres = nombres & ";" & td.Name
+    Next
+    For Each nombre In Split(Mid$(nombres, 2), ";")
+        db.TableDefs.Delete nombre
+    Next
+    db.TableDefs.Refresh
+    VincularTablas rutaDatos
+    DividirBaseDatos = "Tablas vinculadas a " & rutaDatos
+End Function
 
 Private Function ExisteCampo(ByVal db As Object, ByVal tabla As String, ByVal nombreCampo As String) As Boolean
     Dim c As Object

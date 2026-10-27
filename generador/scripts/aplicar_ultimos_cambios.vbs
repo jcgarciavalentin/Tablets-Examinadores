@@ -14,17 +14,6 @@ Option Explicit
 ' Inicio
 ' ---------------------------------------------------------------------------------------------
 
-Const FICHERO_RUTA_BD = "ruta_base_datos.txt"
 Dim rutaBD
-
-If WScript.Arguments.Count > 0 Then
-    rutaBD = WScript.Arguments(0)
-Else
-    rutaBD = LeerTexto(fso.BuildPath(carpeta, FICHERO_RUTA_BD))
-    If rutaBD = "" Then rutaBD = fso.BuildPath(carpeta, "GestionTablets.accdb")
-    rutaBD = Replace(InputBox("Base de datos a la que aplicar los cambios:", TITULO_APP, rutaBD), """", "")
-    If rutaBD = "" Then WScript.Quit 0
-End If
-If fso.FileExists(rutaBD) Then EscribirTexto fso.BuildPath(carpeta, FICHERO_RUTA_BD), rutaBD
-
-AplicarCambios rutaBD
+rutaBD = PedirBaseTrabajo()
+If rutaBD <> "" Then AplicarCambios rutaBD

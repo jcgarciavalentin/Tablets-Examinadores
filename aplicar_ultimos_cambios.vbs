@@ -16,48 +16,56 @@ Option Explicit
 Const AC_MODULE = 5
 Const TITULO_APP = "Gestión de tablets"
 Const FICHERO_RUTA_ANTIGUA = "ruta_base_antigua.txt"
+Const FICHERO_RUTA_BD = "ruta_base_datos.txt"
 
 Dim fso, carpeta
 Set fso = CreateObject("Scripting.FileSystemObject")
 carpeta = fso.GetParentFolderName(WScript.ScriptFullName)
 
 Sub AplicarCambios(rutaBD)
-    Dim acc, hayDatos, conservar, rutaAntigua, copia, resultado, mensaje
+    Dim acc, hayDatos, conservar, rutaAntigua, copia, rutaDatos, copiaDatos, resultado, mensaje, textoDatos
 
-    ' Al abrir un script desde dentro de un ZIP, Windows lo saca solo a una carpeta temporal
-    If InStr(LCase(carpeta), ".zip") > 0 Then
-        MsgBox "Estás ejecutando el script desde dentro del fichero ZIP." & vbCrLf & vbCrLf & _
-               "Primero descomprímelo (clic derecho sobre el ZIP > Extraer todo...) y ejecuta el " & _
-               "script desde la carpeta extraída.", vbExclamation, TITULO_APP
-        Exit Sub
-    End If
-    If Not fso.FileExists(rutaBD) Then
-        MsgBox "No se encuentra " & rutaBD, vbCritical, TITULO_APP
-        Exit Sub
-    End If
-    If fso.FileExists(fso.BuildPath(fso.GetParentFolderName(rutaBD), fso.GetBaseName(rutaBD) & ".laccdb")) Then
-        If MsgBox("Parece que la base de datos está abierta (en este equipo o en otro):" & vbCrLf & rutaBD & _
-                  vbCrLf & vbCrLf & "Ciérrala antes de seguir. ¿Continuar de todos modos?", _
-                  vbExclamation + vbYesNo, TITULO_APP) = vbNo Then Exit Sub
-    End If
-
+    If Not PuedeEmpezar(rutaBD) Then Exit Sub
     copia = HacerCopia(rutaBD)
 
     Set acc = CreateObject("Access.Application")
     acc.OpenCurrentDatabase rutaBD
     CerrarFormularios acc           ' el menú se abre solo al arrancar y hay que poder rehacerlo
+
+    ' Base dividida: los datos están en otro fichero, compartido por todos los usuarios
+    rutaDatos = RutaDatosDe(acc)
+    If rutaDatos <> "" Then
+        If Not fso.FileExists(rutaDatos) Then
+            Cerrar acc
+            MsgBox "Las tablas de esta base de datos están en otro fichero que no se encuentra:" & vbCrLf & _
+                   rutaDatos & vbCrLf & vbCrLf & "Abre la base de datos en Access: te pedirá que indiques " & _
+                   "dónde está. Después vuelve a ejecutar este script.", vbExclamation, TITULO_APP
+            Exit Sub
+        End If
+        If EstaAbierta(rutaDatos) Then
+            If MsgBox("Parece que alguien está usando el fichero de datos:" & vbCrLf & rutaDatos & vbCrLf & vbCrLf & _
+                      "Si hay cambios de estructura (tablas o campos nuevos) no se podrán aplicar mientras " & _
+                      "esté en uso. Pide a todos que cierren la base de datos. ¿Continuar de todos modos?", _
+                      vbExclamation + vbYesNo, TITULO_APP) = vbNo Then
+                Cerrar acc
+                Exit Sub
+            End If
+        End If
+        copiaDatos = HacerCopia(rutaDatos)
+        textoDatos = vbCrLf & "(los datos están en " & rutaDatos & " y los comparten todos los usuarios)"
+    End If
     hayDatos = TieneDatos(acc)
 
     ' ¿Se conservan los datos? Si no, se importan de la base antigua o se deja vacía.
     conservar = hayDatos
     If hayDatos Then
         Select Case MsgBox("La base de datos tiene datos:" & vbCrLf & rutaBD & vbCrLf & vbCrLf & _
-                           "¿Quieres CONSERVAR los datos actuales?" & vbCrLf & vbCrLf & _
+                           textoDatos & vbCrLf & vbCrLf & "¿Quieres CONSERVAR los datos actuales?" & vbCrLf & vbCrLf & _
                            "Sí: se aplican los cambios sin tocar los datos." & vbCrLf & _
                            "No: se borran examinadores, tablets, SIM y asignaciones (a continuación " & _
                            "podrás importarlos de la base antigua)." & vbCrLf & _
                            "Cancelar: no se hace nada." & vbCrLf & vbCrLf & _
-                           "Copia de seguridad hecha en:" & vbCrLf & copia, _
+                           "Copia de seguridad hecha en:" & vbCrLf & copia & vbCrLf & copiaDatos, _
                            vbQuestion + vbYesNoCancel + vbDefaultButton1, TITULO_APP)
             Case vbCancel
                 Cerrar acc
@@ -106,12 +114,74 @@ Sub AplicarCambios(rutaBD)
         mensaje = mensaje & resultado
     End If
     mensaje = mensaje & vbCrLf & vbCrLf & "Copia de seguridad de antes de los cambios:" & vbCrLf & copia
+    If copiaDatos <> "" Then mensaje = mensaje & vbCrLf & copiaDatos
     If Left(resultado, 6) = "ERROR:" Then
         MsgBox mensaje, vbCritical, TITULO_APP
     Else
         MsgBox mensaje, vbInformation, TITULO_APP
     End If
 End Sub
+
+' Comprobaciones antes de tocar nada: que no se ejecute desde dentro del ZIP, que la base exista
+' y que no esté abierta (o que se quiera seguir igualmente).
+Function PuedeEmpezar(rutaBD)
+    PuedeEmpezar = False
+    ' Al abrir un script desde dentro de un ZIP, Windows lo saca solo a una carpeta temporal
+    If InStr(LCase(carpeta), ".zip") > 0 Then
+        MsgBox "Estás ejecutando el script desde dentro del fichero ZIP." & vbCrLf & vbCrLf & _
+               "Primero descomprímelo (clic derecho sobre el ZIP > Extraer todo...) y ejecuta el " & _
+               "script desde la carpeta extraída.", vbExclamation, TITULO_APP
+        Exit Function
+    End If
+    If Not fso.FileExists(rutaBD) Then
+        MsgBox "No se encuentra " & rutaBD, vbCritical, TITULO_APP
+        Exit Function
+    End If
+    If EstaAbierta(rutaBD) Then
+        If MsgBox("Parece que la base de datos está abierta (en este equipo o en otro):" & vbCrLf & rutaBD & _
+                  vbCrLf & vbCrLf & "Ciérrala antes de seguir. ¿Continuar de todos modos?", _
+                  vbExclamation + vbYesNo, TITULO_APP) = vbNo Then Exit Function
+    End If
+    PuedeEmpezar = True
+End Function
+
+' Access crea un fichero .laccdb junto a la base mientras alguien la tiene abierta.
+Function EstaAbierta(ruta)
+    EstaAbierta = fso.FileExists(fso.BuildPath(fso.GetParentFolderName(ruta), fso.GetBaseName(ruta) & ".laccdb"))
+End Function
+
+' Fichero de datos al que están vinculadas las tablas, o "" si la base no está dividida.
+Function RutaDatosDe(acc)
+    Dim db, conexion, p
+    RutaDatosDe = ""
+    Set db = acc.CurrentDb
+    On Error Resume Next
+    conexion = db.TableDefs("Tablets").Connect
+    On Error GoTo 0
+    p = InStr(1, conexion, ";DATABASE=", vbTextCompare)
+    If p = 0 Then Exit Function
+    conexion = Mid(conexion, p + Len(";DATABASE="))
+    If InStr(conexion, ";") > 0 Then conexion = Left(conexion, InStr(conexion, ";") - 1)
+    RutaDatosDe = conexion
+End Function
+
+' Pide la base de datos de trabajo: la arrastrada sobre el script o, si no, la que se escriba
+' (propone la de la última vez y la recuerda para la siguiente).
+Function PedirBaseTrabajo()
+    Dim fichero, ruta
+    fichero = fso.BuildPath(carpeta, FICHERO_RUTA_BD)
+    If WScript.Arguments.Count > 0 Then
+        ruta = WScript.Arguments(0)
+    Else
+        ruta = LeerTexto(fichero)
+        If ruta = "" Then ruta = fso.BuildPath(carpeta, "GestionTablets.accdb")
+        ruta = Replace(InputBox("Base de datos de trabajo (la que abres en Access):", TITULO_APP, ruta), """", "")
+    End If
+    If ruta <> "" Then
+        If fso.FileExists(ruta) Then EscribirTexto fichero, ruta
+    End If
+    PedirBaseTrabajo = ruta
+End Function
 
 ' Copia la base de datos a la carpeta "copias", junto a ella, con la fecha y la hora en el nombre.
 Function HacerCopia(rutaBD)
@@ -226,17 +296,6 @@ End Sub
 ' Inicio
 ' ---------------------------------------------------------------------------------------------
 
-Const FICHERO_RUTA_BD = "ruta_base_datos.txt"
 Dim rutaBD
-
-If WScript.Arguments.Count > 0 Then
-    rutaBD = WScript.Arguments(0)
-Else
-    rutaBD = LeerTexto(fso.BuildPath(carpeta, FICHERO_RUTA_BD))
-    If rutaBD = "" Then rutaBD = fso.BuildPath(carpeta, "GestionTablets.accdb")
-    rutaBD = Replace(InputBox("Base de datos a la que aplicar los cambios:", TITULO_APP, rutaBD), """", "")
-    If rutaBD = "" Then WScript.Quit 0
-End If
-If fso.FileExists(rutaBD) Then EscribirTexto fso.BuildPath(carpeta, FICHERO_RUTA_BD), rutaBD
-
-AplicarCambios rutaBD
+rutaBD = PedirBaseTrabajo()
+If rutaBD <> "" Then AplicarCambios rutaBD

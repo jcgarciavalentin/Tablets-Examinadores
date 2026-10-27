@@ -53,6 +53,41 @@ carpeta) y `aplicar_ultimos_cambios.vbs` (sobre tu base de datos, esté donde es
    última vez (guardada en `ruta_base_antigua.txt`). Si dices que no, la base queda vacía.
 4. Aplica los cambios y muestra un resumen.
 
+## Uso por varias personas (base de datos dividida)
+
+Para que varias personas trabajen a la vez con los mismos datos, la base se divide en dos ficheros:
+
+- **`GestionTablets_Datos.accdb`**: solo las tablas con los datos (y las fotos). Va en una
+  **carpeta compartida de la red** (`\\servidor\carpeta`) y nadie lo abre directamente.
+- **`GestionTablets.accdb`**: formularios, consultas, menú y código, con las tablas **vinculadas**
+  al fichero de datos. **Cada usuario tiene su copia en su equipo** y la abre como siempre.
+
+**Cómo dividirla (una sola vez):**
+
+1. Cierra la base de datos.
+2. Arrastra tu base de trabajo sobre **`dividir_base_datos.vbs`** y elige la carpeta compartida.
+3. El script hace una copia de seguridad, crea `GestionTablets_Datos.accdb` en esa carpeta con las
+   tablas y deja tu `GestionTablets.accdb` con los formularios, vinculado a esos datos.
+4. Da una copia de `GestionTablets.accdb` a cada usuario.
+
+**Después:**
+
+- **Si al abrir la base no encuentra el fichero de datos** (porque se ha movido, o porque en otro
+  equipo la unidad de red tiene otra letra), avisa y te deja buscarlo. El botón **"Ubicación de los
+  datos"** del menú sirve para cambiarlo cuando quieras. Usar la ruta de red (`\\servidor\...`) en
+  vez de una letra de unidad evita este problema.
+- **`aplicar_ultimos_cambios.vbs`** se ejecuta sobre tu `GestionTablets.accdb` igual que antes:
+  - los cambios de estructura (tablas o campos nuevos) los aplica en el fichero de datos, y los
+    formularios en el tuyo;
+  - hace copia de seguridad de los dos;
+  - para cambios de estructura, **nadie debe tener abierta la base** (el script avisa si alguien la
+    está usando);
+  - después, **reparte a los usuarios la copia nueva de `GestionTablets.accdb`**.
+- **Importar de nuevo la base antigua** (respondiendo *No* a conservar los datos) reemplaza los
+  datos del fichero compartido: afecta a todos los usuarios.
+- **No pongáis los ficheros en OneDrive, SharePoint o Teams** para usarlos varios a la vez: la
+  sincronización puede corromperlos.
+
 ## Cargar los datos de la base de datos antigua
 
 La importación copia los datos de la base antigua (la de las tablas `T-Examinadores`, `T-Tablets`,
@@ -166,6 +201,7 @@ En los buscadores escribes el texto (vale una parte) y pulsas **Intro**. **Ver t
 GestionTablets.accdb           Base de datos (tablas, relaciones y valores iniciales de estados)
 ConstruirFormularios.vbs       Creación inicial sobre el GestionTablets.accdb de esta carpeta
 aplicar_ultimos_cambios.vbs    Aplica la versión actual a la base de datos con la que trabajas
+dividir_base_datos.vbs         Separa los datos en un fichero compartido (uso por varias personas)
 vba/modGestionTablets.bas      Lógica de los botones (asignar, devolver, buscar...), queda en la BD
 vba/modConstruirInterfaz.bas   Estructura nueva, consultas y formularios; se borra tras usarlo
 vba/modImportarDatosAntiguos.bas  Importación desde la base antigua; se borra tras usarlo
