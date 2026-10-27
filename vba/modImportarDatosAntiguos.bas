@@ -22,6 +22,7 @@ Private numIncidencias As Long
 ' Claves (sin distinguir mayúsculas) -> Id en la base nueva
 Private idEstadoTablet As Object
 Private idSituacion As Object
+Private idEstadoSim As Object
 Private idExaminadorPorDni As Object
 Private idTabletPorSerie As Object
 Private idSimPorNumero As Object
@@ -37,6 +38,7 @@ Public Function ImportarDatosAntiguos(ByVal rutaAntigua As String) As String
 
     Set idEstadoTablet = CargarDiccionario("EstadosTablet", "Estado", "IdEstado")
     Set idSituacion = CargarDiccionario("EstadosExaminador", "EstadoExaminador", "IdEstadoExam")
+    Set idEstadoSim = CargarDiccionario("EstadosSIM", "EstadoSIM", "IdEstadoSIM")
     Set idExaminadorPorDni = NuevoDiccionario()
     Set idTabletPorSerie = NuevoDiccionario()
     Set idSimPorNumero = NuevoDiccionario()
@@ -101,6 +103,12 @@ Private Sub ImportarEstados()
     Set r = baseAntigua.OpenRecordset("T-EstadoTablet", DB_OPEN_SNAPSHOT)
     Do Until r.EOF
         If Len(Texto(r!Descripcion)) > 0 Then IdEstado idEstadoTablet, "EstadosTablet", "Estado", "IdEstado", Texto(r!Descripcion), ""
+        r.MoveNext
+    Loop
+    r.Close
+    Set r = baseAntigua.OpenRecordset("T-EstadoSIM", DB_OPEN_SNAPSHOT)
+    Do Until r.EOF
+        If Len(Texto(r!EstadoSIM)) > 0 Then IdEstado idEstadoSim, "EstadosSIM", "EstadoSIM", "IdEstadoSIM", Texto(r!EstadoSIM), ""
         r.MoveNext
     Loop
     r.Close
@@ -299,13 +307,14 @@ End Sub
 ' ---------------------------------------------------------------------------------------------
 
 Private Sub ImportarSIM()
-    Dim r As Object, sims As Object, asignaciones As Object, vistas As Object
+    Dim r As Object, sims As Object, asignaciones As Object, vistas As Object, fechaEstado As Object
     Set vistas = NuevoDiccionario()
+    Set fechaEstado = NuevoDiccionario()
     Set sims = baseNueva.OpenRecordset("TarjetasSIM", DB_OPEN_DYNASET)
     Set asignaciones = baseNueva.OpenRecordset("AsignacionesSIM", DB_OPEN_DYNASET)
     Set r = baseAntigua.OpenRecordset("T-HistoriaTabletSim", DB_OPEN_SNAPSHOT)
     Do Until r.EOF
-        ImportarFilaSIM r, sims, asignaciones, vistas
+        ImportarFilaSIM r, sims, asignaciones, vistas, fechaEstado
         r.MoveNext
     Loop
     r.Close
@@ -313,42 +322,63 @@ Private Sub ImportarSIM()
     asignaciones.Close
 End Sub
 
-Private Sub ImportarFilaSIM(ByVal r As Object, ByVal sims As Object, ByVal asignaciones As Object, ByVal vistas As Object)
+' En la base antigua cada fila es una activación de una SIM en una tablet. Se crea una tarjeta por
+' número de SIM: PIN, PUK y teléfono se toman de la primera fila que los tenga, y el estado de la
+' activación más reciente. fechaEstado guarda, por SIM, la fecha de la fila de la que salió su estado.
+Private Sub ImportarFilaSIM(ByVal r As Object, ByVal sims As Object, ByVal asignaciones As Object, _
+                            ByVal vistas As Object, ByVal fechaEstado As Object)
     Dim numero As String, serie As String, registro As String, extra As String, clave As String
-    Dim idSIM As Long, inicio As Variant, fin As Variant
+    Dim telefono As String, estado As String, idSIM As Long, inicio As Variant, fin As Variant, orden As Double
     On Error GoTo Fallo
 
     numero = Texto(r!SIM)
     serie = Texto(r!NumSerieTablet)
+    telefono = Texto(r.Fields("telefono asociado").Value)
+    estado = Texto(r!EstadoSIM)
     registro = "SIM " & numero & " / tablet " & serie & " / activación " & Texto(r!FechaActivacion)
     If Len(numero) = 0 Then Anotar "T-HistoriaTabletSim", registro, "Sin número de SIM: no se importa.": Exit Sub
     If Len(numero) > 22 Then Anotar "T-HistoriaTabletSim", registro, "El número de SIM tiene más de 22 caracteres: no se importa.": Exit Sub
 
-    ' Una tarjeta por número; PIN y PUK se toman de la primera fila que los tenga.
+    inicio = FechaImportada(r!FechaActivacion, "T-HistoriaTabletSim", registro, "Fecha de activación", extra)
+    If IsNull(inicio) Then orden = -1 Else orden = CDbl(inicio)
+
     If idSimPorNumero.Exists(numero) Then
         idSIM = idSimPorNumero(numero)
         sims.FindFirst "IdSIM = " & idSIM
-        If IsNull(sims!PIN) And Len(Texto(r!Pin)) > 0 Or IsNull(sims!PUK) And Len(Texto(r!PUK)) > 0 Then
-            sims.Edit
-            If IsNull(sims!PIN) Then sims!PIN = Nulo(Recortar(Texto(r!Pin), 8, "TarjetasSIM", registro, "PIN"))
-            If IsNull(sims!PUK) Then sims!PUK = Nulo(Recortar(Texto(r!PUK), 10, "TarjetasSIM", registro, "PUK"))
-            sims.Update
+        sims.Edit
+        If IsNull(sims!PIN) Then sims!PIN = Nulo(Recortar(Texto(r!Pin), 8, "TarjetasSIM", registro, "PIN"))
+        If IsNull(sims!PUK) Then sims!PUK = Nulo(Recortar(Texto(r!PUK), 10, "TarjetasSIM", registro, "PUK"))
+        If Len(telefono) > 0 Then
+            If IsNull(sims!NumeroTelefono) Then
+                sims!NumeroTelefono = Recortar(telefono, 20, "TarjetasSIM", registro, "Teléfono")
+            ElseIf sims!NumeroTelefono <> telefono Then
+                Anotar "T-HistoriaTabletSim", registro, "La SIM tenía otro teléfono (" & sims!NumeroTelefono & _
+                       "); este (" & telefono & ") se guarda en las observaciones de la asociación."
+                extra = Combinar(extra, "Teléfono: " & telefono)
+            End If
         End If
+        If Len(estado) > 0 And orden >= fechaEstado(numero) Then
+            sims!IdEstadoSIM = IdEstado(idEstadoSim, "EstadosSIM", "EstadoSIM", "IdEstadoSIM", estado, "Activa")
+            fechaEstado(numero) = orden
+        End If
+        sims.Update
     Else
         sims.AddNew
         sims!IMEI = numero
+        sims!NumeroTelefono = Nulo(Recortar(telefono, 20, "TarjetasSIM", registro, "Teléfono"))
         sims!PIN = Nulo(Recortar(Texto(r!Pin), 8, "TarjetasSIM", registro, "PIN"))
         sims!PUK = Nulo(Recortar(Texto(r!PUK), 10, "TarjetasSIM", registro, "PUK"))
+        sims!IdEstadoSIM = IdEstado(idEstadoSim, "EstadosSIM", "EstadoSIM", "IdEstadoSIM", estado, "Activa")
         sims.Update
         sims.Bookmark = sims.LastModified
         idSIM = sims!IdSIM
         idSimPorNumero.Add numero, idSIM
+        If Len(estado) > 0 Then fechaEstado.Add numero, orden Else fechaEstado.Add numero, -2
     End If
 
     ' Asociación con la tablet
     If Len(serie) = 0 Then Anotar "T-HistoriaTabletSim", registro, "Sin tablet: se importa la SIM pero no la asociación.": Exit Sub
     If Not idTabletPorSerie.Exists(serie) Then Anotar "T-HistoriaTabletSim", registro, "La tablet no existe en la base nueva: se importa la SIM pero no la asociación.": Exit Sub
-    inicio = FechaImportada(r!FechaActivacion, "T-HistoriaTabletSim", registro, "Fecha de activación", extra)
     If IsNull(inicio) Then Anotar "T-HistoriaTabletSim", registro, "Sin fecha de activación válida: se importa la SIM pero no la asociación.": Exit Sub
     fin = FechaImportada(r!FechaFinActivacion, "T-HistoriaTabletSim", registro, "Fecha fin de activación", extra)
 
@@ -356,9 +386,8 @@ Private Sub ImportarFilaSIM(ByVal r As Object, ByVal sims As Object, ByVal asign
     If vistas.Exists(clave) Then Exit Sub
     vistas.Add clave, True
 
-    ' La base nueva no tiene estado ni teléfono de la SIM: se guardan en las observaciones.
-    If Len(Texto(r!EstadoSIM)) > 0 Then extra = Combinar(extra, "Estado SIM: " & Texto(r!EstadoSIM))
-    If Len(Texto(r.Fields("telefono asociado").Value)) > 0 Then extra = Combinar(extra, "Teléfono: " & Texto(r.Fields("telefono asociado").Value))
+    ' El estado de cada activación se conserva en sus observaciones (la SIM solo guarda el último).
+    If Len(estado) > 0 Then extra = Combinar("Estado SIM: " & estado, extra)
     asignaciones.AddNew
     asignaciones!IdTablet = idTabletPorSerie(serie)
     asignaciones!IdSIM = idSIM

@@ -127,6 +127,7 @@ Public Function AsignarSIM()
         MsgBox "Esa tarjeta SIM ya está en esa tablet.", vbInformation
         Exit Function
     End If
+    If Not SIMActiva(idSIM) Then Exit Function
 
     actual = DLookup("Tablet", "qrySIMActuales", "IdSIM = " & idSIM)
     If Not IsNull(actual) Then aviso = aviso & "- La SIM está ahora en la tablet " & actual & "." & vbCrLf
@@ -220,6 +221,18 @@ Private Function TabletOperativa(ByVal idTablet As Long) As Boolean
     Else
         TabletOperativa = (MsgBox("La tablet está en estado '" & estado & "'. ¿Asignarla igualmente?", _
                                   vbQuestion + vbYesNo) = vbYes)
+    End If
+End Function
+
+' Si la SIM no está en estado "Activa" (tabla EstadosSIM) se pide confirmación.
+Private Function SIMActiva(ByVal idSIM As Long) As Boolean
+    Dim estado As Variant
+    estado = DLookup("EstadoSIM", "EstadosSIM", "IdEstadoSIM = " & Nz(DLookup("IdEstadoSIM", "TarjetasSIM", "IdSIM = " & idSIM), 0))
+    If estado = "Activa" Then
+        SIMActiva = True
+    Else
+        SIMActiva = (MsgBox("La tarjeta SIM está en estado '" & estado & "'. ¿Asociarla igualmente?", _
+                            vbQuestion + vbYesNo) = vbYes)
     End If
 End Function
 

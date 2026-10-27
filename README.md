@@ -43,11 +43,11 @@ incidencias y vuelves a importar.
 
 | Base antigua | Base nueva |
 |---|---|
-| `TSituacionExaminador`, `T-EstadoTablet` | Se añaden a `EstadosExaminador` / `EstadosTablet` los valores que falten. |
+| `TSituacionExaminador`, `T-EstadoTablet`, `T-EstadoSIM` | Se añaden a `EstadosExaminador` / `EstadosTablet` / `EstadosSIM` los valores que falten. |
 | `T-Examinadores` | `Examinadores`. El DNI se guarda en mayúsculas y sin espacios, guiones ni puntos. Sin situación → *Activo*. |
 | `T-Tablets` | `Tablets`. Las fechas, que en la antigua son texto, se convierten. Sin estado → *Operativa*. |
 | `T-HistorialAsigTabletExaminador` y `T-HistoricoTablet` | `AsignacionesTablet`. Se enlazan por DNI y nº de serie, y la misma asignación en ambas tablas se carga una sola vez. El antiguo estado de la asignación pasa a las observaciones. |
-| `T-HistoriaTabletSim` | Una fila en `TarjetasSIM` por cada número de SIM distinto (campo SIM → IMEI), con su PIN y PUK, más su historial en `AsignacionesSIM`. El estado de la SIM y el teléfono asociado pasan a las observaciones. |
+| `T-HistoriaTabletSim` | Una fila en `TarjetasSIM` por cada número de SIM distinto (campo SIM → IMEI), más su historial en `AsignacionesSIM`. PIN, PUK y teléfono asociado se toman de la primera fila que los tenga. El estado es el de la activación más reciente; además, el estado de cada activación queda en sus observaciones. |
 | `T-Accesorios`, `Hoja1`, `Copia de …`, `Errores de pegado`, `Hoja1$_ErroresDeImportación` | No se importan. |
 
 Qué se anota en `ImportacionIncidencias`:
@@ -72,12 +72,13 @@ Formatos de fecha que entiende: 15/03/2023, 15-03-2023, 15.03.2023 y los número
 | `EstadosExaminador` | IdEstadoExam, EstadoExaminador: *Activo, Baja temporal, Baja* |
 | `Tablets` | IdTablet, IMEI1, IMEI2, NumeroSerie, Marca, Modelo, FechaRecepcion, FechaDesafectacion, IdEstado, Observaciones, Incidencias |
 | `EstadosTablet` | IdEstado, Estado: *Operativa, Averiada, En reparación, Desafectada* |
-| `TarjetasSIM` | IdSIM, IMEI, PIN, PUK |
+| `TarjetasSIM` | IdSIM, IMEI, NumeroTelefono (teléfono asociado), PIN, PUK, IdEstadoSIM (estado), Observaciones |
+| `EstadosSIM` | IdEstadoSIM, EstadoSIM: *Activa, Suspendida, Baja* |
 | `AsignacionesTablet` | IdAsignacion, IdExaminador, IdTablet, FechaInicio, FechaFin, Observaciones |
 | `AsignacionesSIM` | IdAsignacionSIM, IdTablet, IdSIM, FechaInicio, FechaFin, Observaciones |
 
 - Los valores iniciales de las tablas de estados son orientativos. Se cambian desde el menú
-  (*Estados de tablet* / *Situaciones de examinador*).
+  (*Estados de tablet* / *Situaciones de examinador* / *Estados de SIM*).
 - Son obligatorios: nombre, apellidos y DNI del examinador, nº de serie de la tablet e IMEI de la SIM.
 - Son únicos: DNI, nº de examinador, nº de serie, IMEI1, IMEI2 e IMEI de la SIM. Los campos
   opcionales pueden quedar vacíos en varios registros.
@@ -95,8 +96,9 @@ Formatos de fecha que entiende: 15/03/2023, 15-03-2023, 15.03.2023 y los número
   examinador, nombre o apellidos (también "nombre apellidos").
 - **Tablets**: ficha con el histórico de examinadores y el de tarjetas SIM. Se busca por nº de
   serie, IMEI 1, IMEI 2, marca o modelo.
-- **Tarjetas SIM**: ficha con el histórico de tablets en que ha estado. Se busca por IMEI.
-- **Estados de tablet** / **Situaciones de examinador**: mantenimiento de las tablas auxiliares.
+- **Tarjetas SIM**: ficha con el histórico de tablets en que ha estado. Se busca por IMEI o teléfono.
+- **Estados de tablet** / **Situaciones de examinador** / **Estados de SIM**: mantenimiento de las
+  tablas auxiliares.
 
 **Asignaciones**
 - **Asignar / devolver tablet**: eliges examinador, tablet y fecha. Si la tablet ya tenía
@@ -104,13 +106,15 @@ Formatos de fecha que entiende: 15/03/2023, 15-03-2023, 15.03.2023 y los número
   confirmación. *Registrar devolución* cierra la asignación vigente de la tablet elegida. Si la
   tablet no está "Operativa", pide confirmación. Las tablets con fecha de desafectación no salen en
   la lista.
-- **Asociar / retirar SIM**: igual, entre tablet y tarjeta SIM.
+- **Asociar / retirar SIM**: igual, entre tablet y tarjeta SIM. Si la SIM no está "Activa", pide
+  confirmación.
 
 **Consultas**
 - **Situación actual**: cada tablet con su estado, examinador y SIM actuales.
 - **Histórico examinador - tablet**: todas las asignaciones, vigentes y pasadas. Se busca por
   nombre, apellidos o nº de examinador, o por nº de serie o IMEI 1 de la tablet.
-- **Histórico tablet - SIM**: se busca por IMEI de la SIM, o por nº de serie o IMEI 1 de la tablet.
+- **Histórico tablet - SIM**: se busca por IMEI o teléfono de la SIM, o por nº de serie o IMEI 1 de
+  la tablet.
 
 En los buscadores escribes el texto (vale una parte) y pulsas **Intro**. **Ver todos** quita el filtro.
 

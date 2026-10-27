@@ -51,6 +51,16 @@ public class GenerarBaseDatos {
                 estadosTablet.addRow(Column.AUTO_NUMBER, estado);
             }
 
+            Table estadosSIM = new TableBuilder("EstadosSIM")
+                    .addColumn(autonumerico("IdEstadoSIM"))
+                    .addColumn(texto("EstadoSIM", 50, "Estado de la SIM", true))
+                    .addIndex(clavePrimaria("IdEstadoSIM"))
+                    .addIndex(unico("EstadoSIM"))
+                    .toTable(db);
+            for (String estado : new String[] {"Activa", "Suspendida", "Baja"}) {
+                estadosSIM.addRow(Column.AUTO_NUMBER, estado);
+            }
+
             new TableBuilder("Examinadores")
                     .addColumn(autonumerico("IdExaminador"))
                     .addColumn(texto("NumeroExaminador", 20, "Nº de examinador", false))
@@ -91,10 +101,16 @@ public class GenerarBaseDatos {
             new TableBuilder("TarjetasSIM")
                     .addColumn(autonumerico("IdSIM"))
                     .addColumn(texto("IMEI", 22, "IMEI", true))
+                    .addColumn(texto("NumeroTelefono", 20, "Teléfono asociado", false))
                     .addColumn(texto("PIN", 8, "PIN", false))
                     .addColumn(texto("PUK", 10, "PUK", false))
+                    .addColumn(entero("IdEstadoSIM", "Estado")
+                            .putProperty(PropertyMap.DEFAULT_VALUE_PROP, "1"))   // Activa
+                    .addColumn(memo("Observaciones"))
                     .addIndex(clavePrimaria("IdSIM"))
                     .addIndex(unico("IMEI"))
+                    .addIndex(new IndexBuilder("NumeroTelefono").addColumns("NumeroTelefono"))
+                    .addIndex(new IndexBuilder("IdEstadoSIM").addColumns("IdEstadoSIM"))
                     .toTable(db);
 
             // Cada fila es un periodo de asignación; FechaFin vacía = asignación vigente.
@@ -132,6 +148,7 @@ public class GenerarBaseDatos {
             relacion(db, "Tablets", "AsignacionesTablet", "IdTablet");
             relacion(db, "Tablets", "AsignacionesSIM", "IdTablet");
             relacion(db, "TarjetasSIM", "AsignacionesSIM", "IdSIM");
+            relacion(db, "EstadosSIM", "TarjetasSIM", "IdEstadoSIM");
         }
 
         System.out.println("Creada " + salida.getAbsolutePath());

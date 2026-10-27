@@ -12,7 +12,7 @@ Private Const VISTA_HOJA_DATOS As Integer = 2
 Private Const DB_TEXT As Integer = 10
 
 Private Const FORMULARIOS As String = "frmMenu,frmExaminadores,frmTablets,frmTarjetasSIM,frmAsignarTablet," & _
-    "frmEstadosTablet,frmEstadosExaminador," & _
+    "frmEstadosTablet,frmEstadosExaminador,frmEstadosSIM," & _
     "frmAsignarSIM,frmEstadoTablets,frmHistoricoTablets,frmHistoricoSIM,frmSubHistoricoTablets,frmSubHistoricoSIM," & _
     "frmSubHistorialExaminador," & _
     "frmSubHistorialTablet,frmSubHistorialSIMTablet,frmSubHistorialTabletsSIM,frmSubTabletsActuales,frmSubSIMActuales"
@@ -22,7 +22,7 @@ Private Const CONSULTAS As String = "qryEstadoTablets,qryHistorialTablets,qryHis
 ' Descripciones legibles; una parte vacía no deja su separador suelto.
 Private Const DESC_EXAMINADOR As String = "E.Apellidos & ', ' & E.Nombre & IIf(E.NumeroExaminador Is Null, '', ' (' & E.NumeroExaminador & ')')"
 Private Const DESC_TABLET As String = "T.NumeroSerie & IIf(T.Marca Is Null, '', ' - ' & T.Marca) & IIf(T.Modelo Is Null, '', ' ' & T.Modelo)"
-Private Const DESC_SIM As String = "M.IMEI"
+Private Const DESC_SIM As String = "M.IMEI & IIf(M.NumeroTelefono Is Null, '', ' - ' & M.NumeroTelefono)"
 
 Public Function ConstruirInterfaz()
     BorrarObjetosPrevios
@@ -34,27 +34,29 @@ Public Function ConstruirInterfaz()
     CrearHojaDatos "frmSubHistorialTablet", "qryHistorialTablets", "Histórico de examinadores", _
         Array("Examinador|Examinador|6", "DNI|DNI|2.2", "FechaInicio|Entrega|2.4", "FechaFin|Devolución|2.4", "Vigente|Vigente|1.6", "Observaciones|Observaciones|4")
     CrearHojaDatos "frmSubHistorialSIMTablet", "qryHistorialSIM", "Histórico de tarjetas SIM", _
-        Array("SIM|Tarjeta SIM (IMEI)|6", "FechaInicio|Instalación|2.4", "FechaFin|Retirada|2.4", "Vigente|Vigente|1.6", "Observaciones|Observaciones|4")
+        Array("SIM|Tarjeta SIM|6", "FechaInicio|Instalación|2.4", "FechaFin|Retirada|2.4", "Vigente|Vigente|1.6", "Observaciones|Observaciones|4")
     CrearHojaDatos "frmSubHistorialTabletsSIM", "qryHistorialSIM", "Histórico de tablets", _
         Array("Tablet|Tablet|6", "FechaInicio|Instalación|2.4", "FechaFin|Retirada|2.4", "Vigente|Vigente|1.6", "Observaciones|Observaciones|4")
     CrearHojaDatos "frmSubTabletsActuales", "qryAsignacionesTabletActuales", "Tablets asignadas", _
         Array("Examinador|Examinador|5.5", "DNI|DNI|2.2", "Tablet|Tablet|5.5", "FechaInicio|Entrega|2.4", "Observaciones|Observaciones|4")
     CrearHojaDatos "frmSubSIMActuales", "qrySIMActuales", "SIM instaladas", _
-        Array("Tablet|Tablet|6", "SIM|Tarjeta SIM (IMEI)|5", "FechaInicio|Instalación|2.4", "Observaciones|Observaciones|4")
+        Array("Tablet|Tablet|6", "SIM|Tarjeta SIM|5", "FechaInicio|Instalación|2.4", "Observaciones|Observaciones|4")
     CrearHojaDatos "frmEstadoTablets", "qryEstadoTablets", "Situación actual de las tablets", _
         Array("NumeroSerie|Nº de serie|3.5", "Marca|Marca|3", "Modelo|Modelo|3", "Estado|Estado|2.5", _
-              "Examinador|Examinador|5.5", "AsignadaDesde|Asignada desde|2.6", "SIM|Tarjeta SIM (IMEI)|5")
+              "Examinador|Examinador|5.5", "AsignadaDesde|Asignada desde|2.6", "SIM|Tarjeta SIM|5")
     CrearHojaDatos "frmSubHistoricoTablets", "qryHistorialTablets", "Histórico examinadores - tablets", _
         Array("Examinador|Examinador|5.5", "NumeroExaminador|Nº examinador|2.4", "DNI|DNI|2.2", _
               "NumeroSerie|Nº serie tablet|3", "IMEI1|IMEI 1 tablet|3.5", "Tablet|Tablet|5", "FechaInicio|Entrega|2.4", _
               "FechaFin|Devolución|2.4", "Vigente|Vigente|1.6", "Observaciones|Observaciones|4")
     CrearHojaDatos "frmSubHistoricoSIM", "qryHistorialSIM", "Histórico tablets - tarjetas SIM", _
-        Array("NumeroSerie|Nº serie tablet|3", "IMEI1|IMEI 1 tablet|3.5", "Tablet|Tablet|5", "SIM|Tarjeta SIM (IMEI)|5", _
+        Array("NumeroSerie|Nº serie tablet|3", "IMEI1|IMEI 1 tablet|3.5", "Tablet|Tablet|5", "SIM|Tarjeta SIM|5", _
               "FechaInicio|Instalación|2.4", "FechaFin|Retirada|2.4", "Vigente|Vigente|1.6", "Observaciones|Observaciones|4")
     CrearHojaDatos "frmEstadosTablet", "SELECT * FROM EstadosTablet ORDER BY Estado;", "Estados de tablet", _
         Array("Estado|Estado|6"), True
     CrearHojaDatos "frmEstadosExaminador", "SELECT * FROM EstadosExaminador ORDER BY EstadoExaminador;", _
         "Situaciones de examinador", Array("EstadoExaminador|Situación|6"), True
+    CrearHojaDatos "frmEstadosSIM", "SELECT * FROM EstadosSIM ORDER BY EstadoSIM;", "Estados de SIM", _
+        Array("EstadoSIM|Estado|6"), True
 
     CrearFormExaminadores
     CrearFormTablets
@@ -65,7 +67,7 @@ Public Function ConstruirInterfaz()
         "NumeroExaminador;Nombre;Apellidos;Nombre & ' ' & Apellidos;NumeroSerie;IMEI1", _
         "Nombre, apellidos o nº de examinador; nº de serie o IMEI 1 de la tablet"
     CrearFormHistorico "frmHistoricoSIM", "Histórico tablets - tarjetas SIM", "frmSubHistoricoSIM", _
-        "SIM;NumeroSerie;IMEI1", "IMEI de la SIM; nº de serie o IMEI 1 de la tablet"
+        "SIM;NumeroSerie;IMEI1", "IMEI o teléfono de la SIM; nº de serie o IMEI 1 de la tablet"
     CrearMenu
     EstablecerFormularioInicio
     Application.RefreshDatabaseWindow
@@ -170,12 +172,16 @@ Private Sub CrearFormTarjetasSIM()
     Set f = NuevoFormulario("SELECT * FROM TarjetasSIM ORDER BY IMEI;", "Tarjetas SIM")
     PrepararFicha f
     PonerTitulo f, "Tarjetas SIM", True
-    Buscador f, "FiltrarFormulario", "IMEI", "IMEI de la tarjeta"
+    Buscador f, "FiltrarFormulario", "IMEI;NumeroTelefono", "IMEI o teléfono"
 
     y = 2.4
-    Campo f, acTextBox, "IMEI", "IMEI", "IMEI", 0.5, y, 5: y = y + 0.8
-    Campo f, acTextBox, "PIN", "PIN", "PIN", 0.5, y, 2.5: y = y + 0.8
-    Campo f, acTextBox, "PUK", "PUK", "PUK", 0.5, y, 2.5: y = y + 1.2
+    Campo f, acTextBox, "IMEI", "IMEI", "IMEI", 0.5, y, 5
+    Campo f, acTextBox, "NumeroTelefono", "NumeroTelefono", "Teléfono asociado", 9.5, y, 3.5: y = y + 0.8
+    Campo f, acTextBox, "PIN", "PIN", "PIN", 0.5, y, 2.5
+    Campo f, acTextBox, "PUK", "PUK", "PUK", 9.5, y, 2.5: y = y + 0.8
+    Combo f, "IdEstadoSIM", "IdEstadoSIM", "Estado", 0.5, y, 4, _
+        "SELECT IdEstadoSIM, EstadoSIM FROM EstadosSIM ORDER BY EstadoSIM;", "0;4": y = y + 0.8
+    Memo f, "Observaciones", "Observaciones", 0.5, y, 13.7, 1.6: y = y + 2
 
     Subformulario f, "subHistorial", "frmSubHistorialTabletsSIM", "Histórico de tablets", 0.5, y, 17.5, 5, "IdSIM"
     GuardarFormulario f, "frmTarjetasSIM"
@@ -224,9 +230,9 @@ Private Sub CrearFormAsignarSIM()
         "LEFT JOIN qrySIMActuales AS S ON T.IdTablet = S.IdTablet " & _
         "WHERE T.FechaDesafectacion Is Null ORDER BY T.NumeroSerie;", "0;6;2.5;5"
     Combo f, "cboSIM", "", "Tarjeta SIM", 0.5, 2.6, 8, _
-        "SELECT M.IdSIM, " & DESC_SIM & " AS SIM, S.Tablet " & _
-        "FROM TarjetasSIM AS M LEFT JOIN qrySIMActuales AS S ON M.IdSIM = S.IdSIM " & _
-        "ORDER BY M.IMEI;", "0;5;6"
+        "SELECT M.IdSIM, " & DESC_SIM & " AS SIM, ES.EstadoSIM, S.Tablet " & _
+        "FROM (TarjetasSIM AS M LEFT JOIN EstadosSIM AS ES ON M.IdEstadoSIM = ES.IdEstadoSIM) " & _
+        "LEFT JOIN qrySIMActuales AS S ON M.IdSIM = S.IdSIM ORDER BY M.IMEI;", "0;6;2.5;6"
     CamposFechaYObservaciones f, "Fecha"
 
     Boton f, "cmdAsignar", "Asociar SIM", "=AsignarSIM()", 4.3, 5.2, 4.5
@@ -270,6 +276,7 @@ Private Sub CrearMenu()
     Boton f, "cmdSIM", "Tarjetas SIM", "=AbrirFormulario(""frmTarjetasSIM"")", 0.5, 4.2, 5.5
     Boton f, "cmdEstadosTablet", "Estados de tablet", "=AbrirHojaDatos(""frmEstadosTablet"")", 0.5, 5.5, 5.5
     Boton f, "cmdEstadosExam", "Situaciones de examinador", "=AbrirHojaDatos(""frmEstadosExaminador"")", 0.5, 6.5, 5.5
+    Boton f, "cmdEstadosSIM", "Estados de SIM", "=AbrirHojaDatos(""frmEstadosSIM"")", 0.5, 7.5, 5.5
 
     Seccion f, "Asignaciones", 6.5
     Boton f, "cmdAsignarTablet", "Asignar / devolver tablet", "=AbrirFormulario(""frmAsignarTablet"")", 6.5, 2.2, 5.5
@@ -280,7 +287,7 @@ Private Sub CrearMenu()
     Boton f, "cmdHistTablets", "Histórico examinador - tablet", "=AbrirFormulario(""frmHistoricoTablets"")", 12.5, 3.2, 5.5
     Boton f, "cmdHistSIM", "Histórico tablet - SIM", "=AbrirFormulario(""frmHistoricoSIM"")", 12.5, 4.2, 5.5
 
-    f.Section(acDetail).Height = 7.8 * CM
+    f.Section(acDetail).Height = 8.8 * CM
     GuardarFormulario f, "frmMenu"
 End Sub
 
