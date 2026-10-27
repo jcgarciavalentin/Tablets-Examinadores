@@ -49,7 +49,8 @@ carpeta) y `aplicar_ultimos_cambios.vbs` (sobre tu base de datos, esté donde es
    - **No**: se borran examinadores, tablets, SIM y asignaciones.
    - **Cancelar**: no se hace nada.
 3. Si no se conservan los datos, o la base está vacía, pregunta si **importar ahora la base
-   antigua**. Recuerda su ruta en `ruta_base_antigua.txt`. Si dices que no, la base queda vacía.
+   antigua**. La eliges en el selector de archivos de Windows, que se abre en la que elegiste la
+   última vez (guardada en `ruta_base_antigua.txt`). Si dices que no, la base queda vacía.
 4. Aplica los cambios y muestra un resumen.
 
 ## Cargar los datos de la base de datos antigua

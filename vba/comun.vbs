@@ -57,7 +57,8 @@ Sub AplicarCambios(rutaBD)
     If Not conservar Then
         If MsgBox("¿Importar ahora los datos de la base de datos antigua?", _
                   vbQuestion + vbYesNo, TITULO_APP) = vbYes Then
-            rutaAntigua = PedirBaseAntigua()
+            acc.Visible = True              ' para que el selector de archivos se vea delante
+            rutaAntigua = PedirBaseAntigua(acc)
             If rutaAntigua = "" Then
                 Cerrar acc
                 MsgBox "Cancelado: no se ha cambiado nada.", vbInformation, TITULO_APP
@@ -132,19 +133,34 @@ Sub Cerrar(acc)
     acc.Quit
 End Sub
 
-' Pide la ruta de la base antigua; propone la de la última vez y la guarda para la siguiente.
-Function PedirBaseAntigua()
-    Dim fichero, ruta
+' Abre el selector de archivos de Access para elegir la base antigua. Empieza en la elegida la
+' última vez (o en la carpeta de los scripts) y guarda la elección para la siguiente.
+' Devuelve "" si se cancela.
+Function PedirBaseAntigua(acc)
+    Dim fichero, ruta, dialogo
     fichero = fso.BuildPath(carpeta, FICHERO_RUTA_ANTIGUA)
     ruta = LeerTexto(fichero)
     If ruta = "" Then ruta = BuscarBaseAntigua()
-    Do
-        ruta = Replace(InputBox("Ruta completa de la base de datos antigua:", TITULO_APP, ruta), """", "")
-        If ruta = "" Then Exit Do
-        If fso.FileExists(ruta) Then Exit Do
-        MsgBox "No se encuentra " & ruta, vbExclamation, TITULO_APP
-    Loop
-    If ruta <> "" Then EscribirTexto fichero, ruta
+
+    Set dialogo = acc.FileDialog(3)         ' msoFileDialogFilePicker
+    dialogo.Title = "Elige la base de datos antigua"
+    dialogo.AllowMultiSelect = False
+    dialogo.Filters.Clear
+    dialogo.Filters.Add "Bases de datos de Access", "*.accdb; *.mdb"
+    If ruta <> "" And fso.FileExists(ruta) Then
+        dialogo.InitialFileName = ruta
+    ElseIf ruta <> "" And fso.FolderExists(fso.GetParentFolderName(ruta)) Then
+        dialogo.InitialFileName = fso.GetParentFolderName(ruta) & "\"
+    Else
+        dialogo.InitialFileName = carpeta & "\"
+    End If
+
+    If dialogo.Show = -1 Then
+        ruta = dialogo.SelectedItems(1)
+        EscribirTexto fichero, ruta
+    Else
+        ruta = ""
+    End If
     PedirBaseAntigua = ruta
 End Function
 
