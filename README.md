@@ -8,9 +8,10 @@ tarjetas SIM: qué SIM tiene cada tablet, qué tablet tiene cada examinador, y e
 1. Descarga el proyecto (en GitHub: **Code → Download ZIP**), descomprímelo y copia la carpeta
    completa a un equipo Windows con Microsoft Access. Si Windows bloquea los scripts, antes de
    descomprimir haz clic derecho sobre el ZIP → **Propiedades** → **Desbloquear**.
-2. Haz doble clic en **`ConstruirFormularios.vbs`** con la base de datos cerrada. Se abre Access,
-   crea las consultas, los formularios y el menú dentro de `GestionTablets.accdb` y se cierra. Tarda
-   unos segundos.
+2. Haz doble clic en **`ConstruirFormularios.vbs`** con la base de datos cerrada. Te pregunta si
+   quieres importar los datos de la base antigua (ver más abajo). Después abre Access, crea las
+   consultas, los formularios y el menú dentro de `GestionTablets.accdb` y se cierra. Tarda unos
+   segundos.
 3. Abre `GestionTablets.accdb`. Si aparece la barra amarilla de seguridad, pulsa **Habilitar
    contenido**. También puedes guardar la carpeta en una *ubicación de confianza* (Archivo → Opciones
    → Centro de confianza) para que no vuelva a salir. Sin habilitar el contenido, los botones no
@@ -18,10 +19,6 @@ tarjetas SIM: qué SIM tiene cada tablet, qué tablet tiene cada examinador, y e
 
 Se abre el menú principal (`frmMenu`).
 
-> `ConstruirFormularios.vbs` también añade a una base de datos ya en uso las tablas y campos que se
-> han ido incorporando (histórico de estados, compañías, foto de la SIM), sin tocar los datos. El
-> campo **Foto** lo crea siempre este script, porque Jackcess no sabe crear campos de datos adjuntos.
->
 > **¿Por qué hace falta el paso 2?** Las tablas y relaciones se generan con Jackcess, una librería
 > Java que escribe ficheros de Access sin necesitar Access. Pero los formularios de Access solo los
 > puede crear el propio Access, así que el script lo hace con su automatización (`CreateForm`).
@@ -31,21 +28,43 @@ Se abre el menú principal (`frmMenu`).
 > Inmediato (`Ctrl+G`), escribe `ConstruirInterfaz` y pulsa Intro. Después borra el módulo
 > importado de `modConstruirInterfaz.bas`, que ya no hace falta.
 
+## Aplicar los últimos cambios
+
+Cada vez que haya una versión nueva del proyecto, descárgala y ejecuta
+**`aplicar_ultimos_cambios.vbs`** sobre la base de datos con la que trabajas, con la base cerrada:
+
+- **Arrastra** tu base de datos sobre el script, o haz **doble clic** y escribe su ruta. La recuerda
+  para la próxima vez en `ruta_base_datos.txt`.
+- Añade las tablas y campos nuevos que falten y rehace consultas, formularios y código.
+- El campo **Foto** de las SIM lo crea siempre este paso, porque Jackcess no sabe crear campos de
+  datos adjuntos.
+
+Los dos scripts, `ConstruirFormularios.vbs` (creación inicial, sobre el `GestionTablets.accdb` de su
+carpeta) y `aplicar_ultimos_cambios.vbs` (sobre tu base de datos, esté donde esté), hacen lo mismo:
+
+1. **Copia de seguridad** de la base de datos en la carpeta `copias`, junto a ella, con la fecha y
+   la hora en el nombre.
+2. Si la base tiene datos, pregunta **si conservarlos**:
+   - **Sí**: se aplican los cambios sin tocar los datos.
+   - **No**: se borran examinadores, tablets, SIM y asignaciones.
+   - **Cancelar**: no se hace nada.
+3. Si no se conservan los datos, o la base está vacía, pregunta si **importar ahora la base
+   antigua**. Recuerda su ruta en `ruta_base_antigua.txt`. Si dices que no, la base queda vacía.
+4. Aplica los cambios y muestra un resumen.
+
 ## Cargar los datos de la base de datos antigua
 
-`ImportarDatosAntiguos.vbs` copia los datos de la base antigua (la de las tablas `T-Examinadores`,
-`T-Tablets`, etc.) a `GestionTablets.accdb`. Antes hay que haber ejecutado `ConstruirFormularios.vbs`.
+La importación copia los datos de la base antigua (la de las tablas `T-Examinadores`, `T-Tablets`,
+etc.) a la base nueva. Se hace con cualquiera de los dos scripts anteriores, respondiendo **No** a
+conservar los datos y **Sí** a importar. Las dos bases de datos deben estar cerradas.
 
-1. Cierra las dos bases de datos.
-2. Arrastra la base antigua sobre `ImportarDatosAntiguos.vbs`. También puedes hacer doble clic: si
-   la antigua está en la misma carpeta, te la propone; si no, te pide la ruta.
-3. Confirma el aviso. **Se borran los examinadores, tablets, SIM y asignaciones que hubiera en la
-   base nueva.** La base antigua solo se lee y no se modifica.
-4. Al terminar sale un resumen. Si hay incidencias, abre la tabla **`ImportacionIncidencias`** de
-   la base nueva.
-
-Se puede repetir cuantas veces haga falta: corriges en la base antigua lo que salga en las
-incidencias y vuelves a importar.
+- La base antigua solo se lee y no se modifica.
+- Al terminar sale un resumen. Si hay incidencias, abre la tabla **`ImportacionIncidencias`** de la
+  base nueva.
+- Se puede repetir cuantas veces haga falta, por ejemplo para hacer pruebas con los datos actuales,
+  o tras corregir en la base antigua lo que salga en las incidencias.
+- **Se pierde lo hecho en la base nueva desde la importación anterior.** La copia de seguridad del
+  paso 1 lo conserva por si acaso.
 
 | Base antigua | Base nueva |
 |---|---|
@@ -104,8 +123,8 @@ Formatos de fecha que entiende: 15/03/2023, 15-03-2023, 15.03.2023 y los número
   examinador, nombre, apellidos (también "nombre apellidos"), DNI, o por el IMEI 1 o nº de serie de
   la tablet que tiene asignada en ese momento. Bajo el buscador hay una casilla por cada situación
   (Activo, Baja…): desmarcándolas se ocultan los examinadores en esas situaciones. Las casillas se
-  crean con las situaciones existentes al ejecutar `ConstruirFormularios.vbs`; si añades una
-  situación nueva, vuelve a ejecutarlo para que aparezca su casilla.
+  crean con las situaciones existentes al ejecutar los scripts; si añades una situación nueva,
+  ejecuta `aplicar_ultimos_cambios.vbs` (conservando los datos) para que aparezca su casilla.
 - **Tablets**: ficha con el histórico de examinadores, el de tarjetas SIM y el de estados (las
   devoluciones y los cambios de estado hechos a mano en la propia ficha). Se busca por nº de
   serie, IMEI 1, IMEI 2, marca o modelo.
@@ -144,15 +163,16 @@ En los buscadores escribes el texto (vale una parte) y pulsas **Intro**. **Ver t
 
 ```
 GestionTablets.accdb           Base de datos (tablas, relaciones y valores iniciales de estados)
-ConstruirFormularios.vbs       Crea consultas, formularios y menú dentro de la base de datos
-ImportarDatosAntiguos.vbs      Carga los datos de la base de datos antigua
+ConstruirFormularios.vbs       Creación inicial sobre el GestionTablets.accdb de esta carpeta
+aplicar_ultimos_cambios.vbs    Aplica la versión actual a la base de datos con la que trabajas
+vba/comun.vbs                  Código común de los dos scripts anteriores
 vba/modGestionTablets.bas      Lógica de los botones (asignar, devolver, buscar...), queda en la BD
-vba/modConstruirInterfaz.bas   Construye consultas y formularios; se borra tras usarlo
+vba/modConstruirInterfaz.bas   Estructura nueva, consultas y formularios; se borra tras usarlo
 vba/modImportarDatosAntiguos.bas  Importación desde la base antigua; se borra tras usarlo
 generador/GenerarBaseDatos.java  Genera GestionTablets.accdb desde cero (Jackcess)
 ```
 
-Los `.bas` y el `.vbs` están en codificación Windows-1252 con CRLF, que es lo que espera Access
+Los `.bas` y los `.vbs` están en codificación Windows-1252 con CRLF, que es lo que espera Access
 (`.gitattributes` evita que git los convierta).
 
 ### Regenerar la base de datos vacía
@@ -174,6 +194,7 @@ Después, vuelve a ejecutar `ConstruirFormularios.vbs`.
   o IMEI duplicados, estados inexistentes y asignaciones a registros que no existen. También se ha
   probado todo el SQL de consultas, listas y buscadores con UCanAccess, sobre datos de ejemplo,
   incluida la secuencia de reasignación que cierra la asignación anterior.
-- **No probado**: la ejecución en Access del script de formularios y del código VBA, porque aquí no
-  hay Windows ni Access. Si al ejecutar `ConstruirFormularios.vbs` aparece un error de VBA, anota el
-  mensaje y la línea resaltada para corregirlo. El script se puede volver a ejecutar sin perder datos.
+- **No probado**: la ejecución en Access de los scripts y del código VBA, porque aquí no hay
+  Windows ni Access. Si al ejecutarlos aparece un error, anota el mensaje y la línea resaltada para
+  corregirlo. Los scripts se pueden volver a ejecutar, y antes de tocar nada dejan una copia de
+  seguridad en `copias`.

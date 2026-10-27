@@ -29,6 +29,12 @@ Private Const COLUMNAS_TABLET As String = "T.NumeroSerie AS [Nº de serie], T.IME
 Private Const ANCHOS_TABLET As String = "0;3;3.5;2.5;2.5;2.3"
 Private Const DESC_SIM As String = "M.IMEI & IIf(M.NumeroTelefono Is Null, '', ' - ' & M.NumeroTelefono)"
 
+' Solo añade las tablas y campos que falten, sin tocar formularios. Los scripts la usan antes de
+' importar, porque la importación necesita la estructura al día.
+Public Function ActualizarEstructura()
+    CrearTablasQueFalten
+End Function
+
 Public Function ConstruirInterfaz()
     BorrarObjetosPrevios
     CrearTablasQueFalten

@@ -2,7 +2,8 @@ Option Compare Database
 Option Explicit
 
 ' Copia los datos de la base de datos antigua de tablets a GestionTablets.accdb.
-' ImportarDatosAntiguos.vbs carga este módulo, ejecuta ImportarDatosAntiguos y lo elimina después.
+' Los scripts (ImportarDatosAntiguos.vbs, y aplicar_ultimos_cambios.vbs o ConstruirFormularios.vbs
+' cuando no se conservan los datos) cargan este módulo, lo ejecutan y lo eliminan después.
 '
 ' Antes de importar vacía las tablas de datos de la base nueva (examinadores, tablets, SIM y
 ' asignaciones), así que se puede repetir tantas veces como haga falta tras corregir datos en la
@@ -71,6 +72,14 @@ Public Function ImportarDatosAntiguos(ByVal rutaAntigua As String) As String
 
 Fallo:
     ImportarDatosAntiguos = "ERROR: la importación se ha detenido." & vbCrLf & Err.Description
+End Function
+
+' Deja la base de datos sin examinadores, tablets, SIM ni asignaciones (cuando no se conservan los
+' datos y tampoco se importan).
+Public Function VaciarDatos() As String
+    Set baseNueva = CurrentDb
+    VaciarTablasNuevas
+    VaciarDatos = "Datos borrados: la base de datos queda sin examinadores, tablets, SIM ni asignaciones."
 End Function
 
 ' ---------------------------------------------------------------------------------------------

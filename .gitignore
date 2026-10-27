@@ -1,0 +1,5 @@
+# Generados al usar los scripts en Windows
+copias/
+ruta_base_antigua.txt
+ruta_base_datos.txt
+*.laccdb
