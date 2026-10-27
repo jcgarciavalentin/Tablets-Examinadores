@@ -166,12 +166,17 @@ En los buscadores escribes el texto (vale una parte) y pulsas **Intro**. **Ver t
 GestionTablets.accdb           Base de datos (tablas, relaciones y valores iniciales de estados)
 ConstruirFormularios.vbs       Creación inicial sobre el GestionTablets.accdb de esta carpeta
 aplicar_ultimos_cambios.vbs    Aplica la versión actual a la base de datos con la que trabajas
-vba/comun.vbs                  Código común de los dos scripts anteriores
 vba/modGestionTablets.bas      Lógica de los botones (asignar, devolver, buscar...), queda en la BD
 vba/modConstruirInterfaz.bas   Estructura nueva, consultas y formularios; se borra tras usarlo
 vba/modImportarDatosAntiguos.bas  Importación desde la base antigua; se borra tras usarlo
 generador/GenerarBaseDatos.java  Genera GestionTablets.accdb desde cero (Jackcess)
+generador/scripts/             Fuente de los dos scripts .vbs (código común + cabeceras)
+generador/generar_scripts.py   Genera los dos scripts .vbs a partir de generador/scripts/
 ```
+
+Los dos scripts `.vbs` de la raíz se generan con `python3 generador/generar_scripts.py`: el código
+común está una sola vez en `generador/scripts/comun.vbs`, pero cada script lleva una copia dentro
+para no depender de otros ficheros.
 
 Los `.bas` y los `.vbs` están en codificación Windows-1252 con CRLF, que es lo que espera Access
 (`.gitattributes` evita que git los convierta).
