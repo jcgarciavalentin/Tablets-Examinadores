@@ -25,6 +25,45 @@ Se abre el menú principal (`frmMenu`).
 > Inmediato (`Ctrl+G`), escribe `ConstruirInterfaz` y pulsa Intro. Después borra el módulo
 > importado de `modConstruirInterfaz.bas`, que ya no hace falta.
 
+## Cargar los datos de la base de datos antigua
+
+`ImportarDatosAntiguos.vbs` copia los datos de la base antigua (la de las tablas `T-Examinadores`,
+`T-Tablets`, etc.) a `GestionTablets.accdb`. Antes hay que haber ejecutado `ConstruirFormularios.vbs`.
+
+1. Cierra las dos bases de datos.
+2. Arrastra la base antigua sobre `ImportarDatosAntiguos.vbs`. También puedes hacer doble clic: si
+   la antigua está en la misma carpeta, te la propone; si no, te pide la ruta.
+3. Confirma el aviso. **Se borran los examinadores, tablets, SIM y asignaciones que hubiera en la
+   base nueva.** La base antigua solo se lee y no se modifica.
+4. Al terminar sale un resumen. Si hay incidencias, abre la tabla **`ImportacionIncidencias`** de
+   la base nueva.
+
+Se puede repetir cuantas veces haga falta: corriges en la base antigua lo que salga en las
+incidencias y vuelves a importar.
+
+| Base antigua | Base nueva |
+|---|---|
+| `TSituacionExaminador`, `T-EstadoTablet` | Se añaden a `EstadosExaminador` / `EstadosTablet` los valores que falten. |
+| `T-Examinadores` | `Examinadores`. El DNI se guarda en mayúsculas y sin espacios, guiones ni puntos. Sin situación → *Activo*. |
+| `T-Tablets` | `Tablets`. Las fechas, que en la antigua son texto, se convierten. Sin estado → *Operativa*. |
+| `T-HistorialAsigTabletExaminador` y `T-HistoricoTablet` | `AsignacionesTablet`. Se enlazan por DNI y nº de serie, y la misma asignación en ambas tablas se carga una sola vez. El antiguo estado de la asignación pasa a las observaciones. |
+| `T-HistoriaTabletSim` | Una fila en `TarjetasSIM` por cada número de SIM distinto (campo SIM → IMEI), con su PIN y PUK, más su historial en `AsignacionesSIM`. El estado de la SIM y el teléfono asociado pasan a las observaciones. |
+| `T-Accesorios`, `Hoja1`, `Copia de …`, `Errores de pegado`, `Hoja1$_ErroresDeImportación` | No se importan. |
+
+Qué se anota en `ImportacionIncidencias`:
+
+- **Registros no importados**: sin DNI o nº de serie, DNI de más de 9 caracteres, duplicados,
+  asignaciones cuya tablet o examinador no existe, y asignaciones sin fecha de alta válida.
+- **Datos corregidos**:
+  - IMEI repetidos: se pasan a observaciones, porque en la base nueva son únicos.
+  - Fechas que no se entienden: el texto original se guarda en observaciones.
+  - Nombre o apellidos vacíos: se rellenan con "(sin dato)".
+  - Textos demasiado largos: se recortan, y el texto completo queda en la incidencia.
+- **Asignaciones vigentes a la vez**: por ejemplo, una tablet con dos examinadores sin fecha de baja.
+  Hay que cerrar a mano la que sobre poniendo su fecha de fin.
+
+Formatos de fecha que entiende: 15/03/2023, 15-03-2023, 15.03.2023 y los números de fecha de Excel.
+
 ## Tablas
 
 | Tabla | Campos |
@@ -80,8 +119,10 @@ En los buscadores escribes el texto (vale una parte) y pulsas **Intro**. **Ver t
 ```
 GestionTablets.accdb           Base de datos (tablas, relaciones y valores iniciales de estados)
 ConstruirFormularios.vbs       Crea consultas, formularios y menú dentro de la base de datos
+ImportarDatosAntiguos.vbs      Carga los datos de la base de datos antigua
 vba/modGestionTablets.bas      Lógica de los botones (asignar, devolver, buscar...), queda en la BD
 vba/modConstruirInterfaz.bas   Construye consultas y formularios; se borra tras usarlo
+vba/modImportarDatosAntiguos.bas  Importación desde la base antigua; se borra tras usarlo
 generador/GenerarBaseDatos.java  Genera GestionTablets.accdb desde cero (Jackcess)
 ```
 
